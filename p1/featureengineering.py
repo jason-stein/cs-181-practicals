@@ -3,7 +3,7 @@ from rdkit.Chem import AllChem
 import pandas as pd
 import numpy as np
 
-nbits = 512
+nbits = 256
 
 print "reading in csv"
 # importing old for gap values
@@ -27,21 +27,22 @@ smiles = df_all['smiles']
 
 total = len(smiles)
 
-fpts = [[0.0 for _ in range(nbits)] for _ in range(total)]
+fpts = [[0 for _ in range(nbits)] for _ in range(total)]
 
 print "making fpts"
 
 for i, smile in enumerate(smiles):
 	if i % 100000 == 0:
 		print i
-	fpts[i] = AllChem.GetMorganFingerprintAsBitVect(Chem.MolFromSmiles(smile),2,nBits=nbits)
+	m = Chem.MolFromSmiles(smile)
+	fpts[i] = map(lambda x: int(x), AllChem.GetMorganFingerprintAsBitVect(m, 2, nBits=nbits))
 
 print "making DataFrame"
 
-df = pd.DataFrame(fpts)
+df = pd.DataFrame(fpts, columns=['feat'+str(i+1) for i in range(nbits)])
 
 print "storing"
 
-df.to_csv(nbits+'data.csv')
+df.to_csv(str(nbits)+'data.csv')
 
-# Time on Wendy's computer: 25 min
+# Time on Wendy's computer: 30 min
