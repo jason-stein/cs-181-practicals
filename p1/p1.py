@@ -6,6 +6,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import KFold, ShuffleSplit
 import rdkit.Chem
 
+# importing old for gap values
 df_train = pd.read_csv("train.csv")
 df_test = pd.read_csv("test.csv")
 
@@ -24,6 +25,12 @@ df_all.head()
 
 # Drop the 'smiles' column
 df_all = df_all.drop(['smiles'], axis=1)
+
+# USED FOR GETTING RID OF ALL 0 COLUMNS
+cols_to_drop = (df.columns[(df == 0).all()]).values
+df_all = df_all.drop(cols_to_drop, axis=1)
+# USED FOR GETTING RID OF ALL 0 COLUMNS
+
 vals = df_all.values
 
 # Retrieving train and test post feature-engineering 
@@ -70,5 +77,19 @@ def bagging(i, p, X1, y, X2):
 			predictions = LR_pred
 		else: predictions = np.add(predictions, LR_pred)
 	predictions = np.divide(predictions, i)
-	write_to_file("bagging.csv", predictions)
+	write_to_file("LRbagging.csv", predictions)
+
+def RFbagging(i, p, X1, y, X2):
+	ss = ShuffleSplit(n_splits = i, test_size = p)
+	RF = RandomForestRegressor()
+	predictions = None
+	for train, test in ss.split(X1):
+		X_tr, X_te, y_tr, y_te = X1[train], X1[test], y[train], y[test]
+		RF.fit(X_tr, y_tr)
+		RF_pred = RF.predict(X2)
+		if predictions is None:
+			predictions = RF_pred
+		else: predictions = np.add(predictions, RF_pred)
+	predictions = np.divide(predictions, i)
+	write_to_file("RFbagging.csv", predictions)
 
