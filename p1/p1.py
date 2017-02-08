@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import KFold
 import rdkit.Chem
 
 df_train = pd.read_csv("train.csv")
@@ -34,3 +35,26 @@ def write_to_file(filename, predictions):
         f.write("Id,Prediction\n")
         for i,p in enumerate(predictions):
             f.write(str(i+1) + "," + str(p) + "\n")
+
+def RMSE (y_hats, y):
+	n = len(y)
+	total = 0
+	for i in xrange(n):
+		total += (y_hats[i] - y[i])**2
+	return np.sqrt(total/n)
+
+def kFoldCrossVal(k, X1, y, X2):
+	kf = KFold(n_splits = k)
+	LR = LinearRegression()
+	bestValidation = float('inf')
+	bestPred = []
+	for test, train in kf.split(X1):
+		X_tr, X_te, y_tr, y_te = X1[train], X1[test], y[train], y[test]
+		LR.fit(X_tr, y_tr)
+		LR_pred = LR.predict(X_te)
+		valError = RMSE(LR_pred,y_te)
+		if valError < bestValidation:
+			bestValidation = valError
+			bestPred = LR.predict(X2)
+	write_to_file("kFold.csv", bestPred)
+
