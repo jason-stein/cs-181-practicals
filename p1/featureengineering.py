@@ -3,11 +3,15 @@ from rdkit.Chem import AllChem
 import pandas as pd
 import numpy as np
 
+nbits = 512
+
+print "reading in csv"
 # importing old for gap values
 # importing old for gap values
 df_train = pd.read_csv("train.csv")
 df_test = pd.read_csv("test.csv")
 
+print "manipulating into one smiles list"
 # store gap values
 Y_train = df_train.gap.values
 # row where testing examples start
@@ -19,21 +23,25 @@ df_train = df_train.drop(['gap'], axis=1)
 
 # DataFrame with all train and test examples so we can more easily apply feature engineering on
 df_all = pd.concat((df_train, df_test), axis=0)
-df_smiles = df_all[['smiles']]
-smiles = df_smiles['smiles'].tolist()
+smiles = df_all['smiles']
 
-cols = []
-for i in xrange(512):
-	cols.append('feat' + str(i+1))
+total = len(smiles)
 
-df = pd.DataFrame(columns=(cols))
+fpts = [[0.0 for _ in range(nbits)] for _ in range(total)]
+
+print "making fpts"
 
 for i, smile in enumerate(smiles):
-	if i % 1000 == 0:
+	if i % 100000 == 0:
 		print i
-	m = rdkit.Chem.MolFromSmiles(smiles[0])
-	fp = AllChem.GetMorganFingerprintAsBitVect(m,2,nBits=512)
-	# vals = list(fp.ToBitString())
-	df.loc[i]  = fp
+	fpts[i] = AllChem.GetMorganFingerprintAsBitVect(Chem.MolFromSmiles(smile),2,nBits=nbits)
 
-df.to_csv('512data.csv')
+print "making DataFrame"
+
+df = pd.DataFrame(fpts)
+
+print "storing"
+
+df.to_csv(nbits+'data.csv')
+
+# Time on Wendy's computer: 25 min
