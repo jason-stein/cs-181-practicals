@@ -27,7 +27,7 @@ df_all.head()
 df_all = df_all.drop(['smiles'], axis=1)
 
 # USED FOR GETTING RID OF ALL 0 COLUMNS
-cols_to_drop = (df.columns[(df == 0).all()]).values
+cols_to_drop = (df_all.columns[(df_all == 0).all()]).values
 df_all = df_all.drop(cols_to_drop, axis=1)
 # USED FOR GETTING RID OF ALL 0 COLUMNS
 
@@ -66,30 +66,21 @@ def kFoldCrossVal(k, X1, y, X2):
 	write_to_file("kFold.csv", bestPred)
 
 def bagging(i, p, X1, y, X2):
+	print "Bagging"
 	ss = ShuffleSplit(n_splits = i, test_size = p)
+	print "Split"
 	LR = LinearRegression()
 	predictions = None
+	j = 0
 	for train, test in ss.split(X1):
+		print j
 		X_tr, X_te, y_tr, y_te = X1[train], X1[test], y[train], y[test]
 		LR.fit(X_tr, y_tr)
 		LR_pred = LR.predict(X2)
 		if predictions is None:
 			predictions = LR_pred
 		else: predictions = np.add(predictions, LR_pred)
+		j += 1
 	predictions = np.divide(predictions, i)
 	write_to_file("LRbagging.csv", predictions)
-
-def RFbagging(i, p, X1, y, X2):
-	ss = ShuffleSplit(n_splits = i, test_size = p)
-	RF = RandomForestRegressor()
-	predictions = None
-	for train, test in ss.split(X1):
-		X_tr, X_te, y_tr, y_te = X1[train], X1[test], y[train], y[test]
-		RF.fit(X_tr, y_tr)
-		RF_pred = RF.predict(X2)
-		if predictions is None:
-			predictions = RF_pred
-		else: predictions = np.add(predictions, RF_pred)
-	predictions = np.divide(predictions, i)
-	write_to_file("RFbagging.csv", predictions)
 
