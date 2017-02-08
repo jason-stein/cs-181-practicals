@@ -23,16 +23,17 @@ df_smiles = df_all[['smiles']]
 smiles = df_smiles['smiles'].tolist()
 
 cols = []
-for i in xrange(1024):
+for i in xrange(512):
 	cols.append('feat' + str(i+1))
 
 df = pd.DataFrame(columns=(cols))
 
 for i, smile in enumerate(smiles):
-	print i
+	if i % 1000 == 0:
+		print i
 	m = rdkit.Chem.MolFromSmiles(smiles[0])
-	fp = AllChem.GetMorganFingerprintAsBitVect(m,2,nBits=1024)
-	vals = list(fp.ToBitString())
-	df.loc[i]  = vals
+	fp = AllChem.GetMorganFingerprintAsBitVect(m,2,nBits=512)
+	# vals = list(fp.ToBitString())
+	df.loc[i]  = fp
 
-df.to_csv('1024data.csv')
+df.to_csv('512data.csv')
