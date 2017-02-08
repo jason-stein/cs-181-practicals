@@ -9,6 +9,10 @@ import rdkit.Chem
 # importing old for gap values
 df_train = pd.read_csv("train.csv")
 df_test = pd.read_csv("test.csv")
+df_fpts = pd.read_csv("256data.csv")
+
+df_fpts = df_fpts.drop(df_fpts.columns[0], axis=1)
+df_fpts.columns = ['fpts_'+str(i+1) for i in range(df_fpts.shape[1])]
 
 # store gap values
 Y_train = df_train.gap.values
@@ -22,6 +26,8 @@ df_train = df_train.drop(['gap'], axis=1)
 # DataFrame with all train and test examples so we can more easily apply feature engineering on
 df_all = pd.concat((df_train, df_test), axis=0)
 df_all.head()
+
+df_all = df_all.join(df_fpts)
 
 # Drop the 'smiles' column
 df_all = df_all.drop(['smiles'], axis=1)
@@ -83,4 +89,6 @@ def bagging(i, p, X1, y, X2):
 		j += 1
 	predictions = np.divide(predictions, i)
 	write_to_file("LRbagging.csv", predictions)
+
+
 
