@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, ShuffleSplit
 import rdkit.Chem
 
 df_train = pd.read_csv("train.csv")
@@ -57,4 +57,18 @@ def kFoldCrossVal(k, X1, y, X2):
 			bestValidation = valError
 			bestPred = LR.predict(X2)
 	write_to_file("kFold.csv", bestPred)
+
+def bagging(i, p, X1, y, X2):
+	ss = ShuffleSplit(n_splits = i, test_size = p)
+	LR = LinearRegression()
+	predictions = None
+	for train, test in ss.split(X1):
+		X_tr, X_te, y_tr, y_te = X1[train], X1[test], y[train], y[test]
+		LR.fit(X_tr, y_tr)
+		LR_pred = LR.predict(X2)
+		if predictions is None:
+			predictions = LR_pred
+		else: predictions = np.add(predictions, LR_pred)
+	predictions = np.divide(predictions, i)
+	write_to_file("bagging.csv", predictions)
 
