@@ -8,8 +8,8 @@ import rdkit.Chem
 
 # importing old for gap values
 df_train = pd.read_csv("train.csv")
-df_test = pd.read_csv("test.csv")
-df_fpts = pd.read_csv("256data.csv")
+# df_test = pd.read_csv("test.csv")
+df_fpts = pd.read_csv("512data.csv")
 
 df_fpts = df_fpts.drop(df_fpts.columns[0], axis=1)
 df_fpts.columns = ['fpts_'+str(i+1) for i in range(df_fpts.shape[1])]
@@ -19,23 +19,28 @@ Y_train = df_train.gap.values
 # row where testing examples start
 test_idx = df_train.shape[0]
 # delete 'Id' column
-df_test = df_test.drop(['Id'], axis=1)
+# df_test = df_test.drop(['Id'], axis=1)
 # delete 'gap' column
-df_train = df_train.drop(['gap'], axis=1)
+# df_train = df_train.drop(['gap'], axis=1)
 
 # DataFrame with all train and test examples so we can more easily apply feature engineering on
-df_all = pd.concat((df_train, df_test), axis=0)
-df_all.head()
+# df_all = pd.concat((df_train, df_test), axis=0)
+# df_all.head()
 
-df_all = df_all.join(df_fpts)
+# df_all = df_all.join(df_fpts)
 
 # Drop the 'smiles' column
-df_all = df_all.drop(['smiles'], axis=1)
+# df_all = df_all.drop(['smiles'], axis=1)
+df_all = df_fpts
 
 # USED FOR GETTING RID OF ALL 0 COLUMNS
 cols_to_drop = (df_all.columns[(df_all == 0).all()]).values
 df_all = df_all.drop(cols_to_drop, axis=1)
 # USED FOR GETTING RID OF ALL 0 COLUMNS
+
+# names = list(df_all.columns.values)
+# feature_importances = sorted(zip(map(lambda x: round(x, 4), rf.feature_importances_), names), reverse=True)
+# df_all = p1.df_all.drop([j for (i,j) in feature_importances if i < 0.0001], axis=1)
 
 vals = df_all.values
 
@@ -58,7 +63,7 @@ def RMSE (y_hats, y):
 
 def kFoldCrossVal(k, X1, y, X2):
 	kf = KFold(n_splits = k)
-	LR = LinearRegression()
+	LR = RandomForestRegressor()
 	bestValidation = float('inf')
 	bestPred = []
 	for test, train in kf.split(X1):
@@ -66,10 +71,12 @@ def kFoldCrossVal(k, X1, y, X2):
 		LR.fit(X_tr, y_tr)
 		LR_pred = LR.predict(X_te)
 		valError = RMSE(LR_pred,y_te)
+		print valError
 		if valError < bestValidation:
 			bestValidation = valError
 			bestPred = LR.predict(X2)
-	write_to_file("kFold.csv", bestPred)
+		print bestValidation
+	write_to_file("512RFkFold.csv", bestPred)
 
 def bagging(i, p, X1, y, X2):
 	print "Bagging"

@@ -3,7 +3,7 @@ from rdkit.Chem import AllChem
 import pandas as pd
 import numpy as np
 
-nbits = 256
+nbits = 512
 
 print "reading in csv"
 # importing old for gap values
