@@ -3,13 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import KFold, ShuffleSplit
+from sklearn.model_selection import KFold, ShuffleSplit, GridSearchCV
 import rdkit.Chem
 
 # importing old for gap values
 df_train = pd.read_csv("train.csv")
 # df_test = pd.read_csv("test.csv")
-df_fpts = pd.read_csv("512data.csv")
+df_fpts = pd.read_csv("pruned512.csv")
 
 df_fpts = df_fpts.drop(df_fpts.columns[0], axis=1)
 df_fpts.columns = ['fpts_'+str(i+1) for i in range(df_fpts.shape[1])]
@@ -66,16 +66,22 @@ def kFoldCrossVal(k, X1, y, X2):
 	LR = RandomForestRegressor()
 	bestValidation = float('inf')
 	bestPred = []
+
+	param_grid = {"n_estimators": [5, 10, 15],
+              "max_features": ["log2","sqrt","auto"]}
+
 	for test, train in kf.split(X1):
 		X_tr, X_te, y_tr, y_te = X1[train], X1[test], y[train], y[test]
-		LR.fit(X_tr, y_tr)
-		LR_pred = LR.predict(X_te)
+		GS = GridSearchCV(LR, param_grid = param_grid)
+		GS.fit(X_tr,y_tr)
+		LR_pred = GS.predict(X_te)
 		valError = RMSE(LR_pred,y_te)
 		print valError
 		if valError < bestValidation:
 			bestValidation = valError
 			bestPred = LR.predict(X2)
 		print bestValidation
+
 	write_to_file("512RFkFold.csv", bestPred)
 
 def bagging(i, p, X1, y, X2):
@@ -96,6 +102,17 @@ def bagging(i, p, X1, y, X2):
 		j += 1
 	predictions = np.divide(predictions, i)
 	write_to_file("LRbagging.csv", predictions)
+
+def gridSearchRF(X1, y, X2):
+	RF = RandomForestRegressor()
+	param_grid = {"n_estimators": [5, 10, 15], "max_features": ["log2","sqrt","auto"]}
+	GS = GridSearchCV(RF, param_grid = param_grid)
+	GS.fit(X1,y)
+	RF_pred = GS.predict(X2)
+	print GS.best_params
+	print RMSE(RF_pred, y)
+	write_to_file("gridSearchRF.csv", RF_pred)
+
 
 
 
