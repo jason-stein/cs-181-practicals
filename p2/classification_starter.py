@@ -83,6 +83,7 @@ from keras.layers import Dense
 from keras.layers import LSTM
 from keras.layers.embeddings import Embedding
 from keras.preprocessing import sequence
+import matplotlib.pyplot as plt
 
 # fix random seed for reproducibility
 numpy.random.seed(7)
@@ -162,6 +163,47 @@ def extract_lstm_feats(ffs, direc="train", global_feat_dict=None):
     Y[np.arange(len(classes)), classes] = 1
 
     return X, Y, ids
+
+def get_malware_class_syscall_counts():
+    classes = []
+    counts = []
+    direc="train"
+    for datafile in os.listdir(direc):
+        # extract id and true class (if available) from filename
+        id_str,clazz = datafile.split('.')[:2]
+        # add target class if this is training data
+        try:
+            classes.append(util.malware_classes.index(clazz))
+        except ValueError:
+            # we should only fail to find the label in our list of malware classes
+            # if this is test data, which always has an "X" label
+            assert clazz == "X"
+            classes.append(-1)
+        # parse file as an xml document
+        tree = ET.parse(os.path.join(direc,datafile))
+        # accumulate features
+        counts.append(get_syscall_counts(tree))
+    total_counts = [{} for _ in range(max(classes) + 1)]
+    for i in range(len(counts)):
+        for key, value in counts[i].iteritems():
+            if key in total_counts[classes[i]]:
+                total_counts[classes[i]][key] += 1
+            else:
+                 total_counts[classes[i]][key] = 1
+    plot_freqs(total_counts)
+    return total_counts
+
+def plot_freqs(dict_list):
+    for i, syscalls in enumerate(dict_list):
+        plt.rcParams['xtick.labelsize'] = 3
+        fig = plt.figure()
+        centers = range(len(syscalls))
+        plt.bar(centers, syscalls.values(), align='center', tick_label=syscalls.keys())
+        plt.ylabel("Frequency")
+        plt.title("{}: {}".format(i, util.malware_classes[i]))
+        fig.autofmt_xdate()
+        plt.show()
+        plt.clf()
 
 def make_design_mat(fds, global_feat_dict=None):
     """
@@ -247,6 +289,21 @@ def first_last_system_call_feats(tree):
             
     # finally, mark last call seen
     c["last_call-"+last_call] = 1
+    return c
+
+def get_syscall_counts(tree):
+    c = Counter()
+    in_all_section = False
+    first = True # is this the first system call
+    last_call = None # keep track of last call we've seen
+    for el in tree.iter():
+        # ignore everything outside the "all_section" element
+        if el.tag == "all_section" and not in_all_section:
+            in_all_section = True
+        elif el.tag == "all_section" and in_all_section:
+            in_all_section = False
+        elif in_all_section: 
+            c[el.tag] += 1
     return c
 
 def system_call_count_feats(tree):
