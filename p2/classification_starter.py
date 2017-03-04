@@ -133,6 +133,35 @@ def extract_feats(ffs, direc="train", global_feat_dict=None):
     X,feat_dict = make_design_mat(fds,global_feat_dict)
     return X, feat_dict, np.array(classes), ids
 
+def extract_lstm_feats(ffs, direc="train", global_feat_dict=None):
+    seqs = [] # list of feature dicts
+    classes = []
+    ids = [] 
+    max_seq_len = 500
+    for datafile in os.listdir(direc):
+        # extract id and true class (if available) from filename
+        id_str,clazz = datafile.split('.')[:2]
+        ids.append(id_str)
+        # add target class if this is training data
+        try:
+            classes.append(util.malware_classes.index(clazz))
+        except ValueError:
+            # we should only fail to find the label in our list of malware classes
+            # if this is test data, which always has an "X" label
+            assert clazz == "X"
+            classes.append(-1)
+        # parse file as an xml document
+        tree = ET.parse(os.path.join(direc,datafile))
+        # accumulate features
+        seqs.append(sequence_sys_calls(tree))
+        
+    X = sequence.pad_sequences(seqs, maxlen=max_seq_len)
+
+    classes = np.array(classes)
+    Y = np.zeros((len(classes), max(classes)+1))
+    Y[np.arange(len(classes)), classes] = 1
+
+    return X, Y, ids
 
 def make_design_mat(fds, global_feat_dict=None):
     """
@@ -146,14 +175,12 @@ def make_design_mat(fds, global_feat_dict=None):
         a sparse NxD design matrix, where N == len(fds) and D is the number of
         the union of features defined in any of the fds 
     """
-    print "HIT"
     if global_feat_dict is None:
         all_feats = set()
         [all_feats.update(fd.keys()) for fd in fds]
         feat_dict = dict([(feat, i) for i, feat in enumerate(sorted(all_feats))])
     else:
         feat_dict = global_feat_dict
-    print "HIT 2"
     cols = []
     rows = []
     data = []        
@@ -177,18 +204,14 @@ def make_design_mat(fds, global_feat_dict=None):
         data.extend(temp_data)
         rows.extend([i]*k)
 
-    print "HIT3"
     assert len(cols) == len(rows) and len(rows) == len(data)
-    print "hitt3.5"
 
-    # X = sparse.csr_matrix((np.array(data),
-    #                (np.array(rows), np.array(cols))),
-    #                shape=(len(fds), len(feat_dict)))
+    X = sparse.csr_matrix((np.array(data),
+                   (np.array(rows), np.array(cols))),
+                   shape=(len(fds), len(feat_dict)))
+    print X
     
     # X = np.vstack([[thing] for thing in data])
-    print X
-    print "HIT4"
-    print X
     return X, feat_dict
     
 
@@ -260,7 +283,7 @@ def sequence_sys_calls(tree):
             c['sequence'] = c['sequence'] + [sys_to_int_map[el.tag]]
         last4.pop(0)
         last4.append(el.tag)
-    return c
+    return c['sequence']
 
 # http://stackoverflow.com/questions/3844801/check-if-all-elements-in-a-list-are-identical
 def checkEqual(lst):
@@ -278,34 +301,46 @@ def main():
     
     # extract features
     print "extracting training features..."
-    X_train,global_feat_dict,t_train,train_ids = extract_feats(ffs, train_dir)
+    X_train,t_train,train_ids = extract_lstm_feats(ffs, train_dir)
     print "done extracting training features"
     print
     
-    # # TODO train here, and learn your classification parameters
-    # print "learning..."
+    # TODO train here, and learn your classification parameters
+    print "learning..."
     # learned_W = np.random.random((len(global_feat_dict),len(util.malware_classes)))
-    # print "done learning"
-    # print
+    # create the model
+    # from http://machinelearningmastery.com/sequence-classification-lstm-recurrent-neural-networks-python-keras/
+    embedding_vector_length = 32
+    model = Sequential()
+    model.add(Embedding(1006, embedding_vector_length, input_length=500))
+    model.add(LSTM(100))
+    model.add(Dense(len(t_train[0]), activation='sigmoid'))
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    print(model.summary())
+    model.fit(X_train, t_train, nb_epoch=3, batch_size=64)
+    print "done learning"
+    print
     
-    # # get rid of training data and load test data
-    # del X_train
-    # del t_train
-    # del train_ids
-    # print "extracting test features..."
-    # X_test,_,t_ignore,test_ids = extract_feats(ffs, test_dir, global_feat_dict=global_feat_dict)
-    # print "done extracting test features"
-    # print
+    # get rid of training data and load test data
+    del X_train
+    del t_train
+    del train_ids
+    print "extracting test features..."
+    X_test,t_ignore,test_ids = extract_lstm_feats(ffs, test_dir)
+    print "done extracting test features"
+    print
     
-    # # TODO make predictions on text data and write them out
-    # print "making predictions..."
+    # TODO make predictions on text data and write them out
+    print "making predictions..."
     # preds = np.argmax(X_test.dot(learned_W),axis=1)
-    # print "done making predictions"
-    # print
+    # Final evaluation of the model
+    preds = model.predict(X_test, verbose=0)
+    print "done making predictions"
+    print
     
-    # print "writing predictions..."
-    # util.write_predictions(preds, test_ids, outputfile)
-    # print "done!"
+    print "writing predictions..."
+    util.write_predictions(preds, test_ids, outputfile)
+    print "done!"
 
 if __name__ == "__main__":
     main()
