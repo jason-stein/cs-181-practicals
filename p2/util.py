@@ -48,12 +48,26 @@ def get_syscall_names(direc="train"):
         tree = ET.parse(os.path.join(direc,datafile))
         # accumulate features
         i = 1
+        in_all_section = False
         for el in tree.iter():
-            if el.tag not in calls_dict:
+            if el.tag == "all_section" and not in_all_section:
+                in_all_section = True
+            elif el.tag == "all_section" and in_all_section:
+                in_all_section = False
+            elif in_all_section and el.tag not in calls_dict:
                 calls_dict[el.tag] = i
                 i += 1
+    print len(calls_dict)
     with open('systemcalls.csv', 'wb') as csv_file:
         writer = csv.writer(csv_file)
         for key, value in calls_dict.items():
             writer.writerow([key, value])
+
+def dict_from_csv(direc):
+    dic = {}
+    sys_map = csv.reader(open(direc, 'r'))
+    for row in sys_map:
+        dic[str(row[0])] = row[1]
+    return dic
+
 

@@ -77,7 +77,17 @@ import numpy as np
 from scipy import sparse
 
 import util
+import numpy
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import LSTM
+from keras.layers.embeddings import Embedding
+from keras.preprocessing import sequence
 
+# fix random seed for reproducibility
+numpy.random.seed(7)
+
+sys_to_int_map = util.dict_from_csv('systemcalls.csv')
 
 def extract_feats(ffs, direc="train", global_feat_dict=None):
     """
@@ -118,6 +128,7 @@ def extract_feats(ffs, direc="train", global_feat_dict=None):
         # accumulate features
         [rowfd.update(ff(tree)) for ff in ffs]
         fds.append(rowfd)
+    print "STUFF"
         
     X,feat_dict = make_design_mat(fds,global_feat_dict)
     return X, feat_dict, np.array(classes), ids
@@ -135,13 +146,14 @@ def make_design_mat(fds, global_feat_dict=None):
         a sparse NxD design matrix, where N == len(fds) and D is the number of
         the union of features defined in any of the fds 
     """
+    print "HIT"
     if global_feat_dict is None:
         all_feats = set()
         [all_feats.update(fd.keys()) for fd in fds]
         feat_dict = dict([(feat, i) for i, feat in enumerate(sorted(all_feats))])
     else:
         feat_dict = global_feat_dict
-        
+    print "HIT 2"
     cols = []
     rows = []
     data = []        
@@ -165,12 +177,18 @@ def make_design_mat(fds, global_feat_dict=None):
         data.extend(temp_data)
         rows.extend([i]*k)
 
+    print "HIT3"
     assert len(cols) == len(rows) and len(rows) == len(data)
-   
+    print "hitt3.5"
 
-    X = sparse.csr_matrix((np.array(data),
-                   (np.array(rows), np.array(cols))),
-                   shape=(len(fds), len(feat_dict)))
+    # X = sparse.csr_matrix((np.array(data),
+    #                (np.array(rows), np.array(cols))),
+    #                shape=(len(fds), len(feat_dict)))
+    
+    # X = np.vstack([[thing] for thing in data])
+    print X
+    print "HIT4"
+    print X
     return X, feat_dict
     
 
@@ -228,14 +246,35 @@ def system_call_count_feats(tree):
             c['num_system_calls'] += 1
     return c
 
+def sequence_sys_calls(tree):
+    c = {'sequence': []}
+    in_all_section = False
+    last4 = ['', '.', ',', '!']
+    for el in tree.iter():
+        # ignore everything outside the "all_section" element
+        if el.tag == "all_section" and not in_all_section:
+            in_all_section = True
+        elif el.tag == "all_section" and in_all_section:
+            in_all_section = False
+        elif in_all_section and not checkEqual(last4) and last4[0] != el.tag:
+            c['sequence'] = c['sequence'] + [sys_to_int_map[el.tag]]
+        last4.pop(0)
+        last4.append(el.tag)
+    return c
+
+# http://stackoverflow.com/questions/3844801/check-if-all-elements-in-a-list-are-identical
+def checkEqual(lst):
+   return lst[1:] == lst[:-1]
+
 ## The following function does the feature extraction, learning, and prediction
 def main():
     train_dir = "train"
     test_dir = "test"
     outputfile = "mypredictions.csv"  # feel free to change this or take it as an argument
+    sys_to_int_map = util.dict_from_csv('systemcalls.csv')
     
     # TODO put the names of the feature functions you've defined above in this list
-    ffs = [first_last_system_call_feats, system_call_count_feats]
+    ffs = [sequence_sys_calls]
     
     # extract features
     print "extracting training features..."
@@ -243,30 +282,30 @@ def main():
     print "done extracting training features"
     print
     
-    # TODO train here, and learn your classification parameters
-    print "learning..."
-    learned_W = np.random.random((len(global_feat_dict),len(util.malware_classes)))
-    print "done learning"
-    print
+    # # TODO train here, and learn your classification parameters
+    # print "learning..."
+    # learned_W = np.random.random((len(global_feat_dict),len(util.malware_classes)))
+    # print "done learning"
+    # print
     
-    # get rid of training data and load test data
-    del X_train
-    del t_train
-    del train_ids
-    print "extracting test features..."
-    X_test,_,t_ignore,test_ids = extract_feats(ffs, test_dir, global_feat_dict=global_feat_dict)
-    print "done extracting test features"
-    print
+    # # get rid of training data and load test data
+    # del X_train
+    # del t_train
+    # del train_ids
+    # print "extracting test features..."
+    # X_test,_,t_ignore,test_ids = extract_feats(ffs, test_dir, global_feat_dict=global_feat_dict)
+    # print "done extracting test features"
+    # print
     
-    # TODO make predictions on text data and write them out
-    print "making predictions..."
-    preds = np.argmax(X_test.dot(learned_W),axis=1)
-    print "done making predictions"
-    print
+    # # TODO make predictions on text data and write them out
+    # print "making predictions..."
+    # preds = np.argmax(X_test.dot(learned_W),axis=1)
+    # print "done making predictions"
+    # print
     
-    print "writing predictions..."
-    util.write_predictions(preds, test_ids, outputfile)
-    print "done!"
+    # print "writing predictions..."
+    # util.write_predictions(preds, test_ids, outputfile)
+    # print "done!"
 
 if __name__ == "__main__":
     main()
