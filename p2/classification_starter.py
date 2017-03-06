@@ -129,7 +129,6 @@ def extract_feats(ffs, direc="train", global_feat_dict=None):
         # accumulate features
         [rowfd.update(ff(tree)) for ff in ffs]
         fds.append(rowfd)
-    print "STUFF"
         
     X,feat_dict = make_design_mat(fds,global_feat_dict)
     return X, feat_dict, np.array(classes), ids
@@ -194,7 +193,7 @@ def get_malware_class_syscall_counts():
     return total_counts
 
 def get_all_syscalls():
-
+    return
 
 def plot_freqs(dict_list):
     plt.rcParams['xtick.labelsize'] = 3
@@ -344,6 +343,20 @@ def sequence_sys_calls(tree):
         last4.pop(0)
         last4.append(el.tag)
     return c['sequence']
+
+def get_process_filesize(tree):
+    c = Counter()
+    for el in tree.iter():
+        if el.tag == "process":
+            c['filesize_all_proc'] += int(el.attrib['filesize']) * (int(not int(el.attrib['filesize']) == -1))
+    return c
+
+def get_number_timeouts(tree):
+    c = Counter()
+    for el in tree.iter():
+        if el.tag == "process":
+            c['num_terminations'] += int(el.attrib['terminationreason'] == "Timeout")
+    return c
 
 # http://stackoverflow.com/questions/3844801/check-if-all-elements-in-a-list-are-identical
 def checkEqual(lst):
