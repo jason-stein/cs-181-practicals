@@ -192,9 +192,6 @@ def get_malware_class_syscall_counts():
     plot_freqs(total_counts)
     return total_counts
 
-def get_all_syscalls():
-    return
-
 def plot_freqs(dict_list):
     plt.rcParams['xtick.labelsize'] = 3
     for i, syscalls in enumerate(dict_list):
@@ -294,10 +291,9 @@ def first_last_system_call_feats(tree):
     return c
 
 def get_syscall_counts(tree):
-    c = Counter()
+    c = dict.fromkeys(util.dict_from_csv('systemcalls.csv'), 0)
     in_all_section = False
-    first = True # is this the first system call
-    last_call = None # keep track of last call we've seen
+    
     for el in tree.iter():
         # ignore everything outside the "all_section" element
         if el.tag == "all_section" and not in_all_section:
