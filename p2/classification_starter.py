@@ -380,7 +380,7 @@ def kFoldCrossVal(k, X1, y, X2, classifier):
         classifier.fit(X_tr, y_tr)
         pred = classifier.predict(X_te)
         fracCorrect = fraction_correct(pred, y_te)
-        if fracCorrect < bestValidation:
+        if fracCorrect > bestValidation:
             bestValidation = fracCorrect
             bestPred = classifier.predict(X2)
         print "Current error: {}".format(fracCorrect)
@@ -446,7 +446,7 @@ def run_rf():
     sys_to_int_map = util.dict_from_csv('systemcalls.csv')
     
     # TODO put the names of the feature functions you've defined above in this list
-    ffs = [get_process_filesize, get_number_timeouts, system_call_count_feats, get_syscall_counts]
+    ffs = [get_syscall_counts]
     
     # extract features
     print "extracting training features..."
@@ -491,7 +491,7 @@ def run_svm():
 
 ## The following function does the feature extraction, learning, and prediction
 def main():
-    run_svm()
+    run_rf()
 
 if __name__ == "__main__":
     main()
