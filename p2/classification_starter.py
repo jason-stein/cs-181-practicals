@@ -373,7 +373,7 @@ def fraction_correct (y_hats, y):
 
 def kFoldCrossVal(k, X1, y, X2, classifier):
     kf = KFold(n_splits = k)
-    bestValidation = float('inf')
+    bestValidation = 0.0
     bestPred = []
     for test, train in kf.split(X1):
         X_tr, X_te, y_tr, y_te = X1[train], X1[test], y[train], y[test]
