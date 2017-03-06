@@ -86,6 +86,7 @@ from keras.preprocessing import sequence
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import KFold
+from sklearn import svm
 
 # fix random seed for reproducibility
 numpy.random.seed(7)
@@ -370,20 +371,18 @@ def fraction_correct (y_hats, y):
         total += int(y_hats[i] == y[i])
     return float(total)/float(n)
 
-def kFoldCrossVal(k, X1, y, X2):
+def kFoldCrossVal(k, X1, y, X2, classifier):
     kf = KFold(n_splits = k)
-    RF = RandomForestClassifier()
-    predictions = None
     bestValidation = float('inf')
     bestPred = []
     for test, train in kf.split(X1):
         X_tr, X_te, y_tr, y_te = X1[train], X1[test], y[train], y[test]
-        RF.fit(X_tr, y_tr)
-        RF_pred = RF.predict(X_te)
-        fracCorrect = fraction_correct(RF_pred,y_te)
+        classifier.fit(X_tr, y_tr)
+        pred = classifier.predict(X_te)
+        fracCorrect = fraction_correct(pred, y_te)
         if fracCorrect < bestValidation:
             bestValidation = fracCorrect
-            bestPred = RF.predict(X2)
+            bestPred = classifier.predict(X2)
         print "Current error: {}".format(fracCorrect)
         print "Best error: {}".format(bestValidation)
     return bestPred
@@ -447,7 +446,7 @@ def run_rf():
     sys_to_int_map = util.dict_from_csv('systemcalls.csv')
     
     # TODO put the names of the feature functions you've defined above in this list
-    ffs = [get_process_filesize, get_number_timeouts, get_syscall_counts]
+    ffs = [get_process_filesize, get_number_timeouts, system_call_count_feats, get_syscall_counts]
     
     # extract features
     print "extracting training features..."
@@ -455,10 +454,36 @@ def run_rf():
     print "done extracting training features"
     print "extracting test features"
     X_test,global_feat_dict,t_test,test_ids = extract_feats(ffs, test_dir)
+    print X_test
     print "done extracting test features"
     print
     
-    preds = kFoldCrossVal(3, X_train.toarray(), t_train, X_test.toarray())
+    preds = kFoldCrossVal(3, X_train.toarray(), t_train, X_test.toarray(), RandomForestClassifier())
+    
+    print "writing predictions..."
+    util.write_predictions(preds, test_ids, outputfile)
+    print "done!"
+
+def run_svm():
+    train_dir = "train"
+    test_dir = "test"
+    outputfile = "SVM.csv"  # feel free to change this or take it as an argument
+    sys_to_int_map = util.dict_from_csv('systemcalls.csv')
+    
+    # TODO put the names of the feature functions you've defined above in this list
+    ffs = [get_process_filesize, get_number_timeouts, system_call_count_feats, get_syscall_counts]
+    
+    # extract features
+    print "extracting training features..."
+    X_train,global_feat_dict,t_train,train_ids = extract_feats(ffs, train_dir)
+    print "done extracting training features"
+    print "extracting test features"
+    X_test,global_feat_dict,t_test,test_ids = extract_feats(ffs, test_dir)
+    print X_test
+    print "done extracting test features"
+    print
+    
+    preds = kFoldCrossVal(3, X_train.toarray(), t_train, X_test.toarray(), svm.SVC())
     
     print "writing predictions..."
     util.write_predictions(preds, test_ids, outputfile)
@@ -466,7 +491,7 @@ def run_rf():
 
 ## The following function does the feature extraction, learning, and prediction
 def main():
-    run_rf()
+    run_svm()
 
 if __name__ == "__main__":
     main()
