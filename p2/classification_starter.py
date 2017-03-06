@@ -193,9 +193,12 @@ def get_malware_class_syscall_counts():
     plot_freqs(total_counts)
     return total_counts
 
+def get_all_syscalls():
+
+
 def plot_freqs(dict_list):
+    plt.rcParams['xtick.labelsize'] = 3
     for i, syscalls in enumerate(dict_list):
-        plt.rcParams['xtick.labelsize'] = 3
         fig = plt.figure()
         centers = range(len(syscalls))
         plt.bar(centers, syscalls.values(), align='center', tick_label=syscalls.keys())
