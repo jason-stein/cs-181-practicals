@@ -63,6 +63,7 @@ def get_syscall_names(direc="train"):
         for key, value in calls_dict.items():
             writer.writerow([key, value])
 
+
 def dict_from_csv(direc):
     dic = {}
     sys_map = csv.reader(open(direc, 'r'))

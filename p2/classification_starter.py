@@ -84,6 +84,8 @@ from keras.layers import LSTM
 from keras.layers.embeddings import Embedding
 from keras.preprocessing import sequence
 import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import KFold
 
 # fix random seed for reproducibility
 numpy.random.seed(7)
@@ -300,8 +302,11 @@ def get_syscall_counts(tree):
             in_all_section = True
         elif el.tag == "all_section" and in_all_section:
             in_all_section = False
-        elif in_all_section: 
-            c[el.tag] += 1
+        elif in_all_section:
+            try: 
+                c[el.tag] += 1
+            except KeyError:
+                continue
     return c
 
 def system_call_count_feats(tree):
@@ -358,8 +363,32 @@ def get_number_timeouts(tree):
 def checkEqual(lst):
    return lst[1:] == lst[:-1]
 
-## The following function does the feature extraction, learning, and prediction
-def main():
+def fraction_correct (y_hats, y):
+    n = len(y)
+    total = 0
+    for i in xrange(n):
+        total += int(y_hats[i] == y[i])
+    return float(total)/float(n)
+
+def kFoldCrossVal(k, X1, y, X2):
+    kf = KFold(n_splits = k)
+    RF = RandomForestClassifier()
+    predictions = None
+    bestValidation = float('inf')
+    bestPred = []
+    for test, train in kf.split(X1):
+        X_tr, X_te, y_tr, y_te = X1[train], X1[test], y[train], y[test]
+        RF.fit(X_tr, y_tr)
+        RF_pred = RF.predict(X_te)
+        fracCorrect = fraction_correct(RF_pred,y_te)
+        if fracCorrect < bestValidation:
+            bestValidation = fracCorrect
+            bestPred = RF.predict(X2)
+        print "Current error: {}".format(fracCorrect)
+        print "Best error: {}".format(bestValidation)
+    return bestPred
+
+def run_lstm():
     train_dir = "train"
     test_dir = "test"
     outputfile = "mypredictions.csv"  # feel free to change this or take it as an argument
@@ -411,6 +440,33 @@ def main():
     util.write_predictions(preds, test_ids, outputfile)
     print "done!"
 
+def run_rf():
+    train_dir = "train"
+    test_dir = "test"
+    outputfile = "RandomForestRegressor.csv"  # feel free to change this or take it as an argument
+    sys_to_int_map = util.dict_from_csv('systemcalls.csv')
+    
+    # TODO put the names of the feature functions you've defined above in this list
+    ffs = [get_process_filesize, get_number_timeouts, get_syscall_counts]
+    
+    # extract features
+    print "extracting training features..."
+    X_train,global_feat_dict,t_train,train_ids = extract_feats(ffs, train_dir)
+    print "done extracting training features"
+    print "extracting test features"
+    X_test,global_feat_dict,t_test,test_ids = extract_feats(ffs, test_dir)
+    print "done extracting test features"
+    print
+    
+    preds = kFoldCrossVal(3, X_train.toarray(), t_train, X_test.toarray())
+    
+    print "writing predictions..."
+    util.write_predictions(preds, test_ids, outputfile)
+    print "done!"
+
+## The following function does the feature extraction, learning, and prediction
+def main():
+    run_rf()
+
 if __name__ == "__main__":
     main()
-    
