@@ -71,6 +71,21 @@ def dict_from_csv(direc):
         dic[str(row[0])] = row[1]
     return dic
 
+def compare_preds(direc1, direc2):
+    f1 = csv.reader(open(direc1, 'r'))
+    f2 = csv.reader(open(direc2, 'r'))
+    f1rows = [row for row in f1]
+    f2rows = [row for row in f2]
+    total = 0
+    same = 0
+    for i in xrange(len(f1rows)):
+        total += 1
+        if f1rows[i][1] == f2rows[i][1]:
+            same += 1
+
+    print float(same)/total
+    # print "Similarity: " + str(float(i)/j) + j + i
+
 def create_syscall_ngrams(n):
     syscalls = dict_from_csv("systemcalls.csv").keys()
     ngrams = itertools.combinations(syscalls, n)
