@@ -7,6 +7,7 @@ except ImportError:
 import numpy as np
 from scipy import sparse
 import csv
+import itertools
 
 # these are the fifteen malware classes we're looking for
 malware_classes = ["Agent", "AutoRun", "FraudLoad", "FraudPack", "Hupigon", "Krap",
@@ -32,6 +33,7 @@ def get_syscall_names(direc="train"):
     classes = []
     ids = []
     calls_dict = {}
+    i = 1
     for datafile in os.listdir(direc):
         # extract id and true class (if available) from filename
         id_str,clazz = datafile.split('.')[:2]
@@ -47,16 +49,14 @@ def get_syscall_names(direc="train"):
         # parse file as an xml document
         tree = ET.parse(os.path.join(direc,datafile))
         # accumulate features
-        i = 1
-        in_all_section = False
-        for el in tree.iter():
-            if el.tag == "all_section" and not in_all_section:
-                in_all_section = True
-            elif el.tag == "all_section" and in_all_section:
-                in_all_section = False
-            elif in_all_section and el.tag not in calls_dict:
+
+        target_elements = tree.findall('.//all_section/*')
+
+        for el in target_elements:
+            if el.tag not in calls_dict:
                 calls_dict[el.tag] = i
                 i += 1
+        
     print len(calls_dict)
     with open('systemcalls.csv', 'wb') as csv_file:
         writer = csv.writer(csv_file)
@@ -86,4 +86,17 @@ def compare_preds(direc1, direc2):
     print float(same)/total
     # print "Similarity: " + str(float(i)/j) + j + i
 
-
+def create_syscall_ngrams(n):
+    syscalls = dict_from_csv("systemcalls.csv").keys()
+    ngrams = itertools.combinations(syscalls, n)
+    filename = "syscalls_{}gram.csv".format(n)
+    with open(filename, 'wb') as csv_file:
+        writer = csv.writer(csv_file)
+        for f, s in ngrams:
+            key = f+"+"+s
+            writer.writerow([key, 0])
+            key = s+"+"+f
+            writer.writerow([key, 0])
+        for syscall in syscalls:
+            key = syscall+"+"+syscall
+            writer.writerow([key, 0])

@@ -94,6 +94,8 @@ from sklearn import svm
 # fix random seed for reproducibility
 numpy.random.seed(7)
 
+ngram = 2
+
 sys_to_int_map = util.dict_from_csv('systemcalls.csv')
 
 def extract_feats(ffs, direc="train", global_feat_dict=None):
@@ -300,19 +302,33 @@ def first_last_system_call_feats(tree):
 
 def get_syscall_counts(tree):
     c = dict.fromkeys(util.dict_from_csv('systemcalls.csv'), 0)
-    in_all_section = False
-    
-    for el in tree.iter():
-        # ignore everything outside the "all_section" element
-        if el.tag == "all_section" and not in_all_section:
-            in_all_section = True
-        elif el.tag == "all_section" and in_all_section:
-            in_all_section = False
-        elif in_all_section:
-            try: 
-                c[el.tag] += 1
-            except KeyError:
-                continue
+
+    target_elements = tree.findall('.//all_section/*')
+
+    for el in target_elements:
+        try: 
+            c[el.tag] += 1
+        except KeyError:
+            continue
+
+    return c
+
+def get_syscall_ngrams(tree):
+    g_file = "syscalls_{}gram.csv".format(ngram)
+    c = dict.fromkeys(util.dict_from_csv(g_file), 0)
+
+    target_elements = tree.findall('.//all_section/*')
+
+    prev = ""
+    for el in target_elements:
+        key = prev+"+"+el.tag
+        try: 
+            c[key] += 1
+            prev = el.tag
+        except KeyError:
+            prev = el.tag
+            continue
+
     return c
 
 def system_call_count_feats(tree):
@@ -324,15 +340,12 @@ def system_call_count_feats(tree):
       made by an executable (summed over all processes)
     """
     c = Counter()
-    in_all_section = False
-    for el in tree.iter():
-        # ignore everything outside the "all_section" element
-        if el.tag == "all_section" and not in_all_section:
-            in_all_section = True
-        elif el.tag == "all_section" and in_all_section:
-            in_all_section = False
-        elif in_all_section:
-            c['num_system_calls'] += 1
+    
+    target_elements = tree.findall('.//all_section/*')
+
+    for el in target_elements:
+        c['num_system_calls'] += 1
+    
     return c
 
 def sequence_sys_calls(tree):
@@ -452,7 +465,7 @@ def run_rf():
     sys_to_int_map = util.dict_from_csv('systemcalls.csv')
     
     # TODO put the names of the feature functions you've defined above in this list
-    ffs = [get_syscall_counts]
+    ffs = [get_process_filesize, get_number_timeouts, get_syscall_ngrams]
     
     # extract features
     print "extracting training features..."
@@ -477,7 +490,7 @@ def run_svm():
     sys_to_int_map = util.dict_from_csv('systemcalls.csv')
     
     # TODO put the names of the feature functions you've defined above in this list
-    ffs = [get_process_filesize, get_number_timeouts, system_call_count_feats, get_syscall_counts]
+    ffs = [get_process_filesize, get_number_timeouts, get_syscall_ngrams]
     
     # extract features
     print "extracting training features..."
@@ -497,7 +510,7 @@ def run_svm():
 
 ## The following function does the feature extraction, learning, and prediction
 def main():
-    run_lstm()
+    run_svm()
 
 if __name__ == "__main__":
     main()
