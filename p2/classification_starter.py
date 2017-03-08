@@ -81,6 +81,9 @@ import numpy
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import LSTM
+from keras.layers import Dropout
+from keras.layers.convolutional import Convolution1D
+from keras.layers.convolutional import MaxPooling1D
 from keras.layers.embeddings import Embedding
 from keras.preprocessing import sequence
 import matplotlib.pyplot as plt
@@ -136,11 +139,10 @@ def extract_feats(ffs, direc="train", global_feat_dict=None):
     X,feat_dict = make_design_mat(fds,global_feat_dict)
     return X, feat_dict, np.array(classes), ids
 
-def extract_lstm_feats(ffs, direc="train", global_feat_dict=None):
+def extract_lstm_feats(ffs, sequence_len, direc="train"):
     seqs = [] # list of feature dicts
     classes = []
     ids = [] 
-    max_seq_len = 500
     for datafile in os.listdir(direc):
         # extract id and true class (if available) from filename
         id_str,clazz = datafile.split('.')[:2]
@@ -158,11 +160,14 @@ def extract_lstm_feats(ffs, direc="train", global_feat_dict=None):
         # accumulate features
         seqs.append(sequence_sys_calls(tree))
         
-    X = sequence.pad_sequences(seqs, maxlen=max_seq_len)
+    X = sequence.pad_sequences(seqs, maxlen=sequence_len)
 
+    Y = []
     classes = np.array(classes)
-    Y = np.zeros((len(classes), max(classes)+1))
-    Y[np.arange(len(classes)), classes] = 1
+    if (direc == 'train'):
+        # Make one-hot vector for classes
+        Y = np.zeros((len(classes), max(classes)+1))
+        Y[np.arange(len(classes)), classes] = 1
 
     return X, Y, ids
 
@@ -332,18 +337,13 @@ def system_call_count_feats(tree):
 
 def sequence_sys_calls(tree):
     c = {'sequence': []}
-    in_all_section = False
-    last4 = ['', '.', ',', '!']
+    last3 = ['', '.', ',']
     for el in tree.iter():
-        # ignore everything outside the "all_section" element
-        if el.tag == "all_section" and not in_all_section:
-            in_all_section = True
-        elif el.tag == "all_section" and in_all_section:
-            in_all_section = False
-        elif in_all_section and not checkEqual(last4) and last4[0] != el.tag:
-            c['sequence'] = c['sequence'] + [sys_to_int_map[el.tag]]
-        last4.pop(0)
-        last4.append(el.tag)
+        if el.tag in sys_to_int_map:
+            if el.tag not in last3:
+                c['sequence'] = c['sequence'] + [sys_to_int_map[el.tag]]
+            last3.pop(0)
+            last3.append(el.tag)
     return c['sequence']
 
 def get_process_filesize(tree):
@@ -392,13 +392,14 @@ def run_lstm():
     test_dir = "test"
     outputfile = "mypredictions.csv"  # feel free to change this or take it as an argument
     sys_to_int_map = util.dict_from_csv('systemcalls.csv')
+    sequence_len = 500
     
     # TODO put the names of the feature functions you've defined above in this list
     ffs = [sequence_sys_calls]
     
     # extract features
     print "extracting training features..."
-    X_train,t_train,train_ids = extract_lstm_feats(ffs, train_dir)
+    X_train,t_train,train_ids = extract_lstm_feats(ffs, sequence_len)
     print "done extracting training features"
     print
     
@@ -409,12 +410,16 @@ def run_lstm():
     # from http://machinelearningmastery.com/sequence-classification-lstm-recurrent-neural-networks-python-keras/
     embedding_vector_length = 32
     model = Sequential()
-    model.add(Embedding(1006, embedding_vector_length, input_length=500))
+    model.add(Embedding(102, embedding_vector_length, input_length=sequence_len))
+    model.add(Convolution1D(nb_filter=32, filter_length=3, border_mode='same', activation='relu'))
+    model.add(MaxPooling1D(pool_length=2))
+    model.add(Dropout(0.2))
     model.add(LSTM(100))
+    model.add(Dropout(0.2))
     model.add(Dense(len(t_train[0]), activation='sigmoid'))
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
     print(model.summary())
-    model.fit(X_train, t_train, nb_epoch=3, batch_size=64)
+    model.fit(X_train, t_train, nb_epoch=35, batch_size=64)
     print "done learning"
     print
     
@@ -423,7 +428,7 @@ def run_lstm():
     del t_train
     del train_ids
     print "extracting test features..."
-    X_test,t_ignore,test_ids = extract_lstm_feats(ffs, test_dir)
+    X_test,t_ignore,test_ids = extract_lstm_feats(ffs, sequence_len, 'test')
     print "done extracting test features"
     print
     
@@ -431,9 +436,10 @@ def run_lstm():
     print "making predictions..."
     # preds = np.argmax(X_test.dot(learned_W),axis=1)
     # Final evaluation of the model
-    preds = model.predict(X_test, verbose=0)
+    preds = model.predict_classes(X_test, verbose=0)
     print "done making predictions"
-    print
+    print preds
+    print 
     
     print "writing predictions..."
     util.write_predictions(preds, test_ids, outputfile)
@@ -491,7 +497,7 @@ def run_svm():
 
 ## The following function does the feature extraction, learning, and prediction
 def main():
-    run_rf()
+    run_lstm()
 
 if __name__ == "__main__":
     main()
