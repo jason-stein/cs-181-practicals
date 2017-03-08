@@ -417,6 +417,12 @@ def kFoldCrossVal(k, X1, y, X2, classifier):
         print "Best error: {}".format(bestValidation)
     return bestPred
 
+def prune(X1, X2):
+    cols_to_drop = ~np.all(X1==0, axis=0)
+    X1 = X1[:,cols_to_drop]
+    X2 = X2[:,cols_to_drop]
+    return X1, X2
+
 def run_lstm():
     train_dir = "train"
     test_dir = "test"
@@ -489,12 +495,13 @@ def run_rf():
     X_train,global_feat_dict,t_train,train_ids = extract_feats(ffs, train_dir)
     print "done extracting training features"
     print "extracting test features"
-    X_test,global_feat_dict,t_test,test_ids = extract_feats(ffs, test_dir)
+    X_test,global_feat_dict,t_test,test_ids = extract_feats(ffs, test_dir, global_feat_dict=global_feat_dict)
     print X_test
     print "done extracting test features"
     print
+    X_train, X_test = prune(X_train.toarray(), X_test.toarray())
     
-    preds = kFoldCrossVal(3, X_train.toarray(), t_train, X_test.toarray(), RandomForestClassifier())
+    preds = kFoldCrossVal(3, X_train, t_train, X_test, RandomForestClassifier())
     
     print "writing predictions..."
     util.write_predictions(preds, test_ids, outputfile)
@@ -514,12 +521,13 @@ def run_svm():
     X_train,global_feat_dict,t_train,train_ids = extract_feats(ffs, train_dir)
     print "done extracting training features"
     print "extracting test features"
-    X_test,global_feat_dict,t_test,test_ids = extract_feats(ffs, test_dir)
+    X_test,global_feat_dict,t_test,test_ids = extract_feats(ffs, test_dir, global_feat_dict=global_feat_dict)
     print X_test
     print "done extracting test features"
     print
     
-    preds = kFoldCrossVal(3, X_train.toarray(), t_train, X_test.toarray(), svm.SVC())
+    X_train, X_test = prune(X_train.toarray(), X_test.toarray())
+    preds = kFoldCrossVal(3, X_train, t_train, X_test, svm.SVC())
     
     print "writing predictions..."
     util.write_predictions(preds, test_ids, outputfile)
