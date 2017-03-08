@@ -313,6 +313,21 @@ def get_syscall_counts(tree):
 
     return c
 
+def get_median_process(tree):
+    c = dict.fromkeys(util.dict_from_csv('systemcalls.csv'), 0)
+
+    target_elements = tree.findall('.//all_section/*')
+
+    for el in target_elements:
+        try: 
+            c[el.tag] += 1
+        except KeyError:
+            continue
+    med_val = numpy.median(c.values())
+    for key, val in list.iteritems():
+        if val == med_val:
+            return {'med_process': sys_to_int_map[val]}
+
 def get_syscall_ngrams(tree):
     g_file = "syscalls_{}gram.csv".format(ngram)
     c = dict.fromkeys(util.dict_from_csv(g_file), 0)
@@ -373,6 +388,8 @@ def get_number_timeouts(tree):
             c['num_terminations'] += int(el.attrib['terminationreason'] == "Timeout")
     return c
 
+
+
 # http://stackoverflow.com/questions/3844801/check-if-all-elements-in-a-list-are-identical
 def checkEqual(lst):
    return lst[1:] == lst[:-1]
@@ -423,7 +440,7 @@ def run_lstm():
     # from http://machinelearningmastery.com/sequence-classification-lstm-recurrent-neural-networks-python-keras/
     embedding_vector_length = 32
     model = Sequential()
-    model.add(Embedding(102, embedding_vector_length, input_length=sequence_len))
+    model.add(Embedding(100, embedding_vector_length, input_length=sequence_len))
     model.add(Convolution1D(nb_filter=32, filter_length=3, border_mode='same', activation='relu'))
     model.add(MaxPooling1D(pool_length=2))
     model.add(Dropout(0.2))
@@ -510,7 +527,7 @@ def run_svm():
 
 ## The following function does the feature extraction, learning, and prediction
 def main():
-    run_svm()
+    run_rf()
 
 if __name__ == "__main__":
     main()
