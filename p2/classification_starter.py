@@ -91,6 +91,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import KFold
 from sklearn import svm
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import GridSearchCV
 
 # fix random seed for reproducibility
 numpy.random.seed(7)
@@ -418,6 +419,21 @@ def kFoldCrossVal(k, X1, y, X2, classifier):
         print "Best error: {}".format(bestValidation)
     return bestPred
 
+def gridSearchRF(X1, y, X2):
+    RF = RandomForestClassifier()
+    param_grid = {"n_estimators": range(20, 35), 
+                    "criterion": ["gini", "entropy"],
+                    "max_depth": [3, None],
+              "max_features": [1, 3, 10],
+              "bootstrap": [True, False],
+              "criterion": ["gini", "entropy"]}
+    GS = GridSearchCV(RF, param_grid = param_grid)
+    GS.fit(X1,y)
+    RF_pred = GS.predict(X2)
+    print GS.best_score_
+    print GS.best_params_
+    return RF_pred
+
 def prune(X1, X2):
     cols_to_drop = ~np.all(X1==0, axis=0)
     X1 = X1[:,cols_to_drop]
@@ -492,11 +508,11 @@ def run_lstm():
 def run_rf():
     train_dir = "train"
     test_dir = "test"
-    outputfile = "RandomForestRegressor.csv"  # feel free to change this or take it as an argument
+    outputfile = "RandomForestClassifierGrid3.csv"  # feel free to change this or take it as an argument
     sys_to_int_map = util.dict_from_csv('systemcalls.csv')
     
     # TODO put the names of the feature functions you've defined above in this list
-    ffs = [get_process_filesize, get_number_timeouts, first_last_system_call_feats, system_call_count_feats]
+    ffs = [get_process_filesize, get_number_timeouts, get_syscall_ngrams]
     
     # extract features
     print "extracting training features..."
@@ -507,8 +523,10 @@ def run_rf():
     print X_test
     print "done extracting test features"
     print
+
+    X_train, X_test = prune(X_train.toarray(), X_test.toarray())
     
-    preds = kFoldCrossVal(5, X_train.toarray(), t_train, X_test.toarray(), RandomForestClassifier())
+    preds = gridSearchRF(X_train, t_train, X_test)
     
     print "writing predictions..."
     util.write_predictions(preds, test_ids, outputfile)
