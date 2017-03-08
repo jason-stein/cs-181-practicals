@@ -90,6 +90,7 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import KFold
 from sklearn import svm
+from sklearn.neighbors import KNeighborsClassifier
 
 # fix random seed for reproducibility
 numpy.random.seed(7)
@@ -404,6 +405,13 @@ def prune(X1, X2):
     cols_to_drop = ~np.all(X1==0, axis=0)
     X1 = X1[:,cols_to_drop]
     X2 = X2[:,cols_to_drop]
+    print X1.shape
+    print X2.shape
+    cols_to_drop = ~np.all(X1==1, axis=0)
+    X1 = X1[:,cols_to_drop]
+    X2 = X2[:,cols_to_drop]
+    print X1.shape
+    print X2.shape
     return X1, X2
 
 def run_lstm():
@@ -471,7 +479,7 @@ def run_rf():
     sys_to_int_map = util.dict_from_csv('systemcalls.csv')
     
     # TODO put the names of the feature functions you've defined above in this list
-    ffs = [get_process_filesize, get_number_timeouts, get_syscall_ngrams]
+    ffs = [get_process_filesize, get_number_timeouts, first_last_system_call_feats, system_call_count_feats]
     
     # extract features
     print "extracting training features..."
@@ -482,9 +490,8 @@ def run_rf():
     print X_test
     print "done extracting test features"
     print
-    X_train, X_test = prune(X_train.toarray(), X_test.toarray())
     
-    preds = kFoldCrossVal(3, X_train, t_train, X_test, RandomForestClassifier())
+    preds = kFoldCrossVal(5, X_train.toarray(), t_train, X_test.toarray(), RandomForestClassifier())
     
     print "writing predictions..."
     util.write_predictions(preds, test_ids, outputfile)
@@ -497,7 +504,7 @@ def run_svm():
     sys_to_int_map = util.dict_from_csv('systemcalls.csv')
     
     # TODO put the names of the feature functions you've defined above in this list
-    ffs = [get_process_filesize, get_number_timeouts, get_syscall_ngrams]
+    ffs = [get_process_filesize, get_number_timeouts, get_syscall_ngrams, system_call_count_feats]
     
     # extract features
     print "extracting training features..."
@@ -508,9 +515,34 @@ def run_svm():
     print X_test
     print "done extracting test features"
     print
+
+    preds = kFoldCrossVal(3, X_train.toarray(), t_train, X_test.toarray(), svm.LinearSVC())
     
+    print "writing predictions..."
+    util.write_predictions(preds, test_ids, outputfile)
+    print "done!"
+
+def run_knn():
+    train_dir = "train"
+    test_dir = "test"
+    outputfile = "kNN.csv"
+
+    neigh = KNeighborsClassifier(n_neighbors=15)
+
+     # TODO put the names of the feature functions you've defined above in this list
+    ffs = [get_process_filesize, get_number_timeouts, get_syscall_ngrams]
+    
+    # extract features
+    print "extracting training features..."
+    X_train,global_feat_dict,t_train,train_ids = extract_feats(ffs, train_dir)
+    print "done extracting training features"
+    print "extracting test features"
+    X_test,global_feat_dict,t_test,test_ids = extract_feats(ffs, test_dir, global_feat_dict=global_feat_dict)
+    print "done extracting test features"
+    print
+
     X_train, X_test = prune(X_train.toarray(), X_test.toarray())
-    preds = kFoldCrossVal(3, X_train, t_train, X_test, svm.SVC())
+    preds = kFoldCrossVal(5, X_train, t_train, X_test, neigh)
     
     print "writing predictions..."
     util.write_predictions(preds, test_ids, outputfile)
@@ -518,7 +550,7 @@ def run_svm():
 
 ## The following function does the feature extraction, learning, and prediction
 def main():
-    run_svm()
+    run_rf()
 
 if __name__ == "__main__":
     main()
