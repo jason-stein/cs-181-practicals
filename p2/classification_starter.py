@@ -317,7 +317,7 @@ def get_syscall_counts(tree):
     return c
 
 def get_median_process(tree):
-    c = dict.fromkeys(util.dict_from_csv('systemcalls.csv'), 0)
+    c = Counter()
 
     target_elements = tree.findall('.//all_section/*')
 
@@ -327,9 +327,10 @@ def get_median_process(tree):
         except KeyError:
             continue
     med_val = numpy.median(c.values())
-    for key, val in list.iteritems():
+    for key, val in c.iteritems():
         if val == med_val:
-            return {'med_process': sys_to_int_map[val]}
+            return {'med_process': int(sys_to_int_map[key])}
+    return {'med_process': 0}
 
 def get_syscall_ngrams(tree):
     g_file = "syscalls_{}gram.csv".format(ngram)
@@ -371,7 +372,7 @@ def sequence_sys_calls(tree):
     last3 = ['', '.', ',']
     for el in tree.iter():
         if el.tag in sys_to_int_map:
-            if el.tag not in last3:
+            if el.tag:
                 c['sequence'] = c['sequence'] + [sys_to_int_map[el.tag]]
             last3.pop(0)
             last3.append(el.tag)
@@ -459,7 +460,7 @@ def run_lstm():
     test_dir = "test"
     outputfile = "mypredictions.csv"  # feel free to change this or take it as an argument
     sys_to_int_map = util.dict_from_csv('systemcalls.csv')
-    sequence_len = 500
+    sequence_len = 1000
     
     # TODO put the names of the feature functions you've defined above in this list
     ffs = [sequence_sys_calls]
@@ -477,16 +478,16 @@ def run_lstm():
     # from http://machinelearningmastery.com/sequence-classification-lstm-recurrent-neural-networks-python-keras/
     embedding_vector_length = 32
     model = Sequential()
-    model.add(Embedding(100, embedding_vector_length, input_length=sequence_len))
+    model.add(Embedding(102, embedding_vector_length, input_length=sequence_len))
     model.add(Convolution1D(nb_filter=32, filter_length=3, border_mode='same', activation='relu'))
     model.add(MaxPooling1D(pool_length=2))
     model.add(Dropout(0.2))
-    model.add(LSTM(100))
+    model.add(LSTM(200))
     model.add(Dropout(0.2))
     model.add(Dense(len(t_train[0]), activation='sigmoid'))
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
     print(model.summary())
-    model.fit(X_train, t_train, nb_epoch=35, batch_size=64)
+    model.fit(X_train, t_train, nb_epoch=50, batch_size=64)
     print "done learning"
     print
     
@@ -584,6 +585,7 @@ def run_knn():
     print
 
     X_train, X_test = prune(X_train.toarray(), X_test.toarray())
+
     preds = kFoldCrossVal(5, X_train, t_train, X_test, neigh)
     
     print "writing predictions..."
@@ -592,7 +594,7 @@ def run_knn():
 
 ## The following function does the feature extraction, learning, and prediction
 def main():
-    run_rf()
+    run_rf
 
 if __name__ == "__main__":
     main()
