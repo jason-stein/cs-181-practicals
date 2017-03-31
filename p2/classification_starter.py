@@ -92,6 +92,7 @@ from sklearn.model_selection import KFold
 from sklearn import svm
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import GridSearchCV
+import operator
 
 # fix random seed for reproducibility
 numpy.random.seed(7)
@@ -391,6 +392,17 @@ def get_number_timeouts(tree):
             c['num_terminations'] += int(el.attrib['terminationreason'] == "Timeout")
     return c
 
+def get_number_processes(tree):
+    c = Counter()
+    for el in tree.iter():
+        if el.tag == "process":
+            c['num_processes'] += 1
+    return c
+
+def get_most_frequent_syscall(tree):
+    c = get_syscall_counts(tree)
+    m = max(c.iteritems(), key=operator.itemgetter(1))[0]
+    return {'max_call-'+m : 1}
 
 
 # http://stackoverflow.com/questions/3844801/check-if-all-elements-in-a-list-are-identical
@@ -422,12 +434,7 @@ def kFoldCrossVal(k, X1, y, X2, classifier):
 
 def gridSearchRF(X1, y, X2):
     RF = RandomForestClassifier()
-    param_grid = {"n_estimators": range(20, 35), 
-                    "criterion": ["gini", "entropy"],
-                    "max_depth": [3, None],
-              "max_features": [1, 3, 10],
-              "bootstrap": [True, False],
-              "criterion": ["gini", "entropy"]}
+    param_grid = {"n_estimators": [3500], "min_samples_split": [3]}
     GS = GridSearchCV(RF, param_grid = param_grid)
     GS.fit(X1,y)
     RF_pred = GS.predict(X2)
@@ -509,11 +516,11 @@ def run_lstm():
 def run_rf():
     train_dir = "train"
     test_dir = "test"
-    outputfile = "RandomForestClassifierGrid3.csv"  # feel free to change this or take it as an argument
+    outputfile = "RandomForestClassifierGrid5000.csv"  # feel free to change this or take it as an argument
     sys_to_int_map = util.dict_from_csv('systemcalls.csv')
     
     # TODO put the names of the feature functions you've defined above in this list
-    ffs = [get_process_filesize, get_number_timeouts, get_syscall_ngrams, first_last_system_call_feats, get_median_process]
+    ffs = [get_process_filesize, get_number_timeouts, get_most_frequent_syscall, get_syscall_ngrams]
     
     # extract features
     print "extracting training features..."
