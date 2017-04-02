@@ -9,7 +9,7 @@ import rdkit.Chem
 # importing old for gap values
 df_train = pd.read_csv("train.csv")
 # df_test = pd.read_csv("test.csv")
-df_fpts = pd.read_csv("pruned512.csv")
+df_fpts = pd.read_csv("256data.csv")
 
 df_fpts = df_fpts.drop(df_fpts.columns[0], axis=1)
 df_fpts.columns = ['fpts_'+str(i+1) for i in range(df_fpts.shape[1])]
@@ -95,6 +95,7 @@ def bagging(i, p, X1, y, X2):
 		print j
 		X_tr, X_te, y_tr, y_te = X1[train], X1[test], y[train], y[test]
 		LR.fit(X_tr, y_tr)
+		print RMSE(LR.predict(X_tr), y_tr)
 		LR_pred = LR.predict(X2)
 		if predictions is None:
 			predictions = LR_pred
