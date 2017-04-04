@@ -1,4 +1,6 @@
 import csv
+import time
+import numpy as np
 
 def dict_from_csv(direc):
     dic = {}
@@ -16,6 +18,24 @@ def create_dict_csv(file):
 	    writer.writerow(['none','sense'])
 	    for i, key in enumerate(keys):
 	    	writer.writerow([key, i])
-	    
+
+def create_big_ass_matrix(filename):
+	artists_dict = dict_from_csv('artists_dict.csv')
+	profiles_dict = dict_from_csv('profiles_dict.csv')
+
+	big_ass_matrix = np.zeros((len(profiles_dict), len(artists_dict)))
+
+	start = time.time()
+	with open(filename, 'r') as f:
+		data = csv.reader(f, delimiter=',', quotechar='"')
+		for line in data:
+			if isinstance(line[2], int):
+				row = profiles_dict[line[0]]
+				col = artists_dict[line[1]]
+				val = line[2]
+				big_ass_matrix[row][col] = val
+
+	print "Time to create big_ass_matrix: {}".format(time.time() - start)
+	return big_ass_matrix
 # util.create_dict_csv('artists')
 # util.create_dict_csv('profiles')
