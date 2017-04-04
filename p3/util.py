@@ -29,11 +29,11 @@ def create_big_ass_matrix(filename):
 	with open(filename, 'r') as f:
 		data = csv.reader(f, delimiter=',', quotechar='"')
 		for line in data:
-			if isinstance(line[2], int):
-				row = profiles_dict[line[0]]
-				col = artists_dict[line[1]]
+			if line[2].isdigit():
+				row = int(profiles_dict[line[0]])
+				col = int(artists_dict[line[1]])
 				val = line[2]
-				big_ass_matrix[row][col] = val
+				big_ass_matrix[row,col] = val
 
 	print "Time to create big_ass_matrix: {}".format(time.time() - start)
 	return big_ass_matrix
