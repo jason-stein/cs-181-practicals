@@ -12,7 +12,7 @@ class kMeans():
 		self.labels = []
 		self.clusters = []
 
-	def train(self, k=1000, trainfile='train.csv', batch=2000):
+	def train(self, k=2000, trainfile='train.csv', batch=10000):
 		self.K = k
 		training = util.create_big_ass_matrix(trainfile)
 		training = np.array(training)
@@ -43,21 +43,14 @@ class kMeans():
 		i = 1
 
 		for row in testing:
+			i += 1
 			if not i % 1000:
 				print i
-			writer.writerow([i, self.clusters[int(self.labels[users[row[1]]])][artists[row[2]]]])
+			val = self.clusters[int(self.labels[int(users[row[1]])])][int(artists[row[2]])]
+			val = 0 if val == 0 else np.exp(val - 1)
+			writer.writerow([i, int(round(val))])
 
-
-	# Predict
-	# mean = 118 # This is just a default in case a user has no info
-	# testing = util.create_big_ass_matrix('test.csv')
-	# testing = np.array(testing)
-	# testing_log = np.where(testing==0,0, np.log(testing)+1)
-	# results = kmeans.predict(testing_log)
-	# np.savetxt('kmeansres.csv', results, delimiter=',')
-	# np.savetxt('kmeansclusters.csv', kmeans.cluster_centers_, delimiter=',')
-
-# kmeans = kMeans()
-# kmeans.train()
-# kmeans.predict()
+kmeans = kMeans()
+kmeans.train()
+kmeans.predict()
 
