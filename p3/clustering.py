@@ -43,12 +43,12 @@ class kMeans():
 		i = 1
 
 		for row in testing:
-			i += 1
 			if not i % 1000:
 				print i
 			val = self.clusters[int(self.labels[int(users[row[1]])])][int(artists[row[2]])]
 			val = 0 if val == 0 else np.exp(val - 1)
 			writer.writerow([i, int(round(val))])
+			i += 1
 
 kmeans = kMeans()
 kmeans.train()
