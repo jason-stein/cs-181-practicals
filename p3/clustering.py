@@ -12,7 +12,7 @@ class kMeans():
 		self.labels = []
 		self.clusters = []
 
-	def train(self, k=2000, trainfile='train.csv', batch=10000):
+	def train(self, k=200, trainfile='train.csv', batch=10000):
 		self.K = k
 		training = util.create_big_ass_matrix(trainfile)
 		training = np.array(training)

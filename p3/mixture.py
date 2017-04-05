@@ -9,7 +9,7 @@ class gMixture:
 		self.n_components = -1
 		self.trainfile = 'train.csv'
 
-	def fit(self, n_components = 200, trainfile = 'train.csv'):
+	def fit(self, n_components = 20, trainfile = 'train.csv', div = 100):
 		self.n_components = n_components
 		training = util.create_big_ass_matrix(trainfile)
 		training = np.array(training)
@@ -20,6 +20,7 @@ class gMixture:
 		model = GaussianMixture(n_components = self.n_components, max_iter = 10)
 		print "Fitting"
 		model.fit(training_log)
+		n = len(training_log)
 		self.means = model.means_
 		print "Predicting"
 		self.labels = model.predict(training_log)
