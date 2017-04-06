@@ -36,6 +36,7 @@ class kMeans():
 	def train_by_profile(self, k=200, trainfile='train.csv', batch=10000, testing=True):
 		# Train the kmeans
 		self.K = k
+		print self.K
 		self.testing = testing
 		profiles = util.create_profile_matrix()
 		start = time.time()
@@ -122,11 +123,11 @@ class kMeans():
 			if cluster_artist_median == 0 or cluster_median == 0:
 				val = med
 				if val == 0:
-					val = 118 * .94
+					val = 118
 			else:
 				val = (float(cluster_artist_median) / cluster_median) * med
 				val = (val + med) / 2.0
-			#val = val * .97
+			val = val * .97
 			writer.writerow([val, med, cluster_artist_median, cluster_median])
 			if self.testing:
 				error += abs(val - int(row[3]))
