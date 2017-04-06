@@ -12,6 +12,7 @@ class kMeans():
 		self.labels = []
 		self.clusters = []
 		self.cluster_medians = []
+		self.cluster_artist_medians = []
 		self.testing = False
 
 	def train(self, k=200, trainfile='train.csv', batch=5000):
@@ -49,25 +50,29 @@ class kMeans():
 			self.test, self.train = util.create_test_train(trainfile, test_amt=.2)
 		else:
 			self.train = util.create_big_ass_matrix(trainfile)
+		self.cluster_artist_medians = [[] for i in range(self.K)]
 		self.cluster_medians = [[] for i in range(self.K)]
 		for i in range(self.K):
 			print i
 			data = self.train[np.where(self.labels == i)]
 			data_masked = np.ma.masked_where(data==0, data)
 			try:
-				self.cluster_medians[i] = np.ma.median(data_masked, axis=0).filled(0)
+				# Median per artist per cluster
+				self.cluster_artist_medians[i] = np.ma.median(data_masked, axis=0).filled(0)
+				# Overall median per cluster
+				self.cluster_medians[i] = np.ma.median(data_masked)
 			except IndexError:
 				# If there are no points associated with a cluster, it won't be able to be
 				# median-ed, print them out just to check
 				print data_masked
 				print data
 
-		self.cluster_medians = np.array(self.cluster_medians)
+		self.cluster_artist_medians = np.array(self.cluster_artist_medians)
 		np.savetxt('kmeansclusters_profiles.csv', kmeans.cluster_centers_, delimiter=',')
 		np.savetxt('kmeanslabels_profiles.csv', kmeans.labels_, delimiter=',')
 		with open('kmeans_profiles_clustermedians.txt', 'wb') as f:
 			w = csv.writer(f)
-			w.writerows(self.cluster_medians)
+			w.writerows(self.cluster_artist_medians)
 
 	def predict(self, testfile='test.csv', outfile='kmeans_results.csv'):
 		users = util.dict_from_csv("profiles_dict.csv")
@@ -93,6 +98,8 @@ class kMeans():
 		users = util.dict_from_csv("profiles_dict.csv")
 		artists = util.dict_from_csv("artists_dict.csv")
 
+		user_medians = [np.median(user[np.nonzero(user)]) for user in self.train]
+
 		if self.testing:
 			testing = self.test
 		else:
@@ -105,17 +112,22 @@ class kMeans():
 		i = 1
 		error = 0
 
+		saved = open("vals_check.csv", 'wb')
+		writer = csv.writer(saved)
 		for row in testing:
-			if not i % 1000:
-				print i
 			user = int(users[row[1]])
-			val1 = self.cluster_medians[int(self.labels[user])][int(artists[row[2]])]
-			median = np.median(self.train[user][np.nonzero(self.train[user])])
-			val = (val1 + median)/2.0
-			if val1 == 0:
-				val = median
+			cluster_artist_median = self.cluster_artist_medians[int(self.labels[user])][int(artists[row[2]])]
+			cluster_median = self.cluster_medians[int(self.labels[user])]
+			med = user_medians[user]
+			if cluster_artist_median == 0 or cluster_median == 0:
+				val = med
 				if val == 0:
 					val = 118 * .94
+			else:
+				val = (float(cluster_artist_median) / cluster_median) * med
+				val = (val + med) / 2.0
+			#val = val * .97
+			writer.writerow([val, med, cluster_artist_median, cluster_median])
 			if self.testing:
 				error += abs(val - int(row[3]))
 			else:
@@ -124,8 +136,12 @@ class kMeans():
 		if self.testing:
 			error = float(error) / len(self.test)
 			print "Error: {}".format(error)
+			return error
 
 kmeans = kMeans()
-kmeans.train_by_profile(k=400)
-kmeans.predict_profile(outfile='kmeans_profiles_results_3.csv')
+error = 0
+for i in range(3):
+	kmeans.train_by_profile(k=10)
+	error += kmeans.predict_profile(outfile='kmeans_profiles_results_3.csv')
+print "3 fold: {}".format(error/3)
 
