@@ -13,7 +13,7 @@ class kMeans():
 		self.clusters = []
 		self.cluster_medians = []
 
-	def train(self, k=200, trainfile='train.csv', batch=10000):
+	def train(self, k=200, trainfile='train.csv', batch=5000):
 		self.K = k
 		training = util.create_big_ass_matrix(trainfile)
 		training = np.array(training)
@@ -100,15 +100,18 @@ class kMeans():
 		for row in testing:
 			if not i % 1000:
 				print i
-			val = self.cluster_medians[int(self.labels[int(users[row[1]])])][int(artists[row[2]])]
-			if val == 0:
-				val = np.median([j for j in self.training[int(users[row[1]])] if j != 0])
+			user = int(users[row[1]])
+			val1 = self.cluster_medians[int(self.labels[user])][int(artists[row[2]])]
+			median = np.median(self.training[user][np.nonzero(self.training[user])])
+			val = (val1 + median)/2.0
+			if val1 == 0:
+				val = median
 				if val == 0:
 					val = 118 * .94
-			writer.writerow([i, int(round(val))])
+			writer.writerow([i, val])
 			i += 1
 
 kmeans = kMeans()
-kmeans.train_by_profile(k=2000)
-kmeans.predict_profile(outfile='kmeans_profiles_results_2.csv')
+kmeans.train_by_profile(k=400)
+kmeans.predict_profile(outfile='kmeans_profiles_results_3.csv')
 
