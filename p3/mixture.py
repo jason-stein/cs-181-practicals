@@ -9,7 +9,7 @@ class gMixture:
 		self.n_components = -1
 		self.trainfile = 'train.csv'
 
-	def fit(self, n_components = 20, trainfile = 'train.csv', div = 100):
+	def fit(self, n_components = 20, trainfile = 'train.csv'):
 		self.n_components = n_components
 		training = util.create_big_ass_matrix(trainfile)
 		training = np.array(training)

@@ -49,6 +49,7 @@ def create_big_ass_matrix(filename):
 				big_ass_matrix[row,col] = val
 
 	print "Time to create big_ass_matrix: {}".format(time.time() - start)
+	np.save('train' + "_matrix", big_ass_matrix)
 	return big_ass_matrix
 
 def create_profile_matrix():
