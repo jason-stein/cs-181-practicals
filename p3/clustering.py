@@ -112,9 +112,6 @@ class kMeans():
 		
 		i = 1
 		error = 0
-
-		saved = open("vals_check.csv", 'wb')
-		writer = csv.writer(saved)
 		for row in testing:
 			user = int(users[row[1]])
 			cluster_artist_median = self.cluster_artist_medians[int(self.labels[user])][int(artists[row[2]])]
@@ -128,7 +125,6 @@ class kMeans():
 				val = (float(cluster_artist_median) / cluster_median) * med
 				val = (val + med) / 2.0
 			val = val * .97
-			writer.writerow([val, med, cluster_artist_median, cluster_median])
 			if self.testing:
 				error += abs(val - int(row[3]))
 			else:
@@ -140,9 +136,6 @@ class kMeans():
 			return error
 
 kmeans = kMeans()
-error = 0
-for i in range(3):
-	kmeans.train_by_profile(k=10)
-	error += kmeans.predict_profile(outfile='kmeans_profiles_results_3.csv')
-print "3 fold: {}".format(error/3)
+kmeans.train_by_profile(k=10, testing=False)
+error += kmeans.predict_profile(outfile='kmeans_profiles_results_k10_97.csv')
 
