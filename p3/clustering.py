@@ -3,6 +3,7 @@ import numpy as np
 import time
 import csv
 from sklearn.cluster import MiniBatchKMeans
+from scipy.stats import hmean
 
 
 class kMeans():
@@ -52,16 +53,16 @@ class kMeans():
 		else:
 			self.train = util.create_big_ass_matrix(trainfile)
 		self.cluster_artist_medians = [[] for i in range(self.K)]
-		self.cluster_medians = [[] for i in range(self.K)]
+		self.cluster_medians = [0 for i in range(self.K)]
 		for i in range(self.K):
 			print i
 			data = self.train[np.where(self.labels == i)]
 			data_masked = np.ma.masked_where(data==0, data)
 			try:
 				# Median per artist per cluster
-				self.cluster_artist_medians[i] = np.ma.median(data_masked, axis=0).filled(0)
+				self.cluster_artist_medians[i] = hmean(data_masked, axis=0).filled(0)
 				# Overall median per cluster
-				self.cluster_medians[i] = np.ma.median(data_masked)
+				self.cluster_medians[i] = hmean(data_masked, axis=None)
 			except IndexError:
 				# If there are no points associated with a cluster, it won't be able to be
 				# median-ed, print them out just to check
@@ -99,7 +100,7 @@ class kMeans():
 		users = util.dict_from_csv("profiles_dict.csv")
 		artists = util.dict_from_csv("artists_dict.csv")
 
-		user_medians = [np.median(user[np.nonzero(user)]) for user in self.train]
+		user_medians = [hmean(np.ma.masked_where(user==0, user)) for user in self.train]
 
 		if self.testing:
 			testing = self.test
@@ -137,5 +138,5 @@ class kMeans():
 
 kmeans = kMeans()
 kmeans.train_by_profile(k=10, testing=False)
-kmeans.predict_profile(outfile='kmeans_profiles_results_k10_97.csv')
+kmeans.predict_profile(outfile='kmeans_profiles_results_k10_97_hmean.csv')
 
