@@ -137,5 +137,5 @@ class kMeans():
 
 kmeans = kMeans()
 kmeans.train_by_profile(k=10, testing=False)
-error += kmeans.predict_profile(outfile='kmeans_profiles_results_k10_97.csv')
+kmeans.predict_profile(outfile='kmeans_profiles_results_k10_97.csv')
 
