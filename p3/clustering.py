@@ -12,6 +12,7 @@ class kMeans():
 		self.labels = []
 		self.clusters = []
 		self.cluster_medians = []
+		self.testing = False
 
 	def train(self, k=200, trainfile='train.csv', batch=5000):
 		self.K = k
@@ -31,9 +32,10 @@ class kMeans():
 		np.savetxt('kmeansclusters.csv', kmeans.cluster_centers_, delimiter=',')
 		np.savetxt('kmeanslabels.csv', kmeans.labels_, delimiter=',')
 
-	def train_by_profile(self, k=200, trainfile='train.csv', batch=10000):
+	def train_by_profile(self, k=200, trainfile='train.csv', batch=10000, testing=True):
 		# Train the kmeans
 		self.K = k
+		self.testing = testing
 		profiles = util.create_profile_matrix()
 		start = time.time()
 		kmeans = MiniBatchKMeans(n_clusters=self.K, batch_size=batch, compute_labels=True)
@@ -43,11 +45,14 @@ class kMeans():
 		self.clusters = kmeans.cluster_centers_
 
 		# Get median number of plays per artist per cluster
-		training = util.create_big_ass_matrix(trainfile)
+		if self.testing:
+			self.test, self.train = util.create_test_train(trainfile, test_amt=.2)
+		else:
+			self.train = util.create_big_ass_matrix(trainfile)
 		self.cluster_medians = [[] for i in range(self.K)]
 		for i in range(self.K):
 			print i
-			data = training[np.where(self.labels == i)]
+			data = self.train[np.where(self.labels == i)]
 			data_masked = np.ma.masked_where(data==0, data)
 			try:
 				self.cluster_medians[i] = np.ma.median(data_masked, axis=0).filled(0)
@@ -56,7 +61,6 @@ class kMeans():
 				# median-ed, print them out just to check
 				print data_masked
 				print data
-		self.training = training
 
 		self.cluster_medians = np.array(self.cluster_medians)
 		np.savetxt('kmeansclusters_profiles.csv', kmeans.cluster_centers_, delimiter=',')
@@ -89,27 +93,37 @@ class kMeans():
 		users = util.dict_from_csv("profiles_dict.csv")
 		artists = util.dict_from_csv("artists_dict.csv")
 
-		res = open(outfile, 'wb')
-		writer = csv.writer(res)
-		writer.writerow(['Id','plays'])
-
-		testing = csv.reader(open(testfile, 'r'))
-		next(testing, None)
+		if self.testing:
+			testing = self.test
+		else:
+			res = open(outfile, 'wb')
+			writer = csv.writer(res)
+			writer.writerow(['Id','plays'])
+			testing = csv.reader(open(testfile, 'r'))
+			next(testing, None)
+		
 		i = 1
+		error = 0
 
 		for row in testing:
 			if not i % 1000:
 				print i
 			user = int(users[row[1]])
 			val1 = self.cluster_medians[int(self.labels[user])][int(artists[row[2]])]
-			median = np.median(self.training[user][np.nonzero(self.training[user])])
+			median = np.median(self.train[user][np.nonzero(self.train[user])])
 			val = (val1 + median)/2.0
 			if val1 == 0:
 				val = median
 				if val == 0:
 					val = 118 * .94
-			writer.writerow([i, val])
+			if self.testing:
+				error += abs(val - int(row[3]))
+			else:
+				writer.writerow([i, val])
 			i += 1
+		if self.testing:
+			error = float(error) / len(self.test)
+			print "Error: {}".format(error)
 
 kmeans = kMeans()
 kmeans.train_by_profile(k=400)

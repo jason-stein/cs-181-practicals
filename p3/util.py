@@ -52,6 +52,34 @@ def create_big_ass_matrix(filename):
 	np.save('train' + "_matrix", big_ass_matrix)
 	return big_ass_matrix
 
+def create_test_train(filename, test_amt=.2):
+	artists_dict = dict_from_csv('artists_dict.csv')
+	profiles_dict = dict_from_csv('profiles_dict.csv')
+
+	start = time.time()
+	train = np.zeros((len(profiles_dict), len(artists_dict)))
+	test = []
+
+	with open(filename, 'r') as f:
+		line_iter = csv.reader(f, delimiter=',', quotechar='"')
+		data = list(line_iter)[1:]
+		n = len(data)
+		np.random.shuffle(data)
+		test = data[:int(round(n*test_amt))]
+		for t in test:
+			t.insert(0, 1) # because normally we have indices in front of the test data
+		data = data[int(round(n*test_amt)):]
+		for line in data:
+			row = int(profiles_dict[line[0]])
+			col = int(artists_dict[line[1]])
+			val = line[2]
+			train[row, col] = val
+	print np.array(test).shape
+	print np.array(train).shape
+	print "Time to create test and train: {}".format(time.time() - start)
+	return test, train
+
+
 def create_profile_matrix():
 	start = time.time()
 	countries = country_dict_from_csv('countries_latlng.csv')
@@ -69,7 +97,7 @@ def create_profile_matrix():
 				profiles_matrix[i][1] = 1
 			else:
 				profiles_matrix[i][2] = 1
-			if line[2]:
+			if line[2]:# and int(line[2]) > 10 and int(line[2]) < 100:
 				profiles_matrix[i][3] = int(line[2])/80.
 			else:
 				profiles_matrix[i][4] = 1
