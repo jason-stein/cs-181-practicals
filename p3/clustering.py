@@ -4,6 +4,8 @@ import time
 import csv
 from sklearn.cluster import MiniBatchKMeans
 from scipy.stats import hmean
+import sys
+import traceback
 
 
 class kMeans():
@@ -60,21 +62,23 @@ class kMeans():
 			data_masked = np.ma.masked_where(data==0, data)
 			try:
 				# Median per artist per cluster
-				self.cluster_artist_medians[i] = hmean(data_masked, axis=0).filled(0)
+				self.cluster_artist_medians[i] = [np.mean(self.reject_outliers(data_masked[:,j])) for j in range(len(data[0]))]
 				# Overall median per cluster
-				self.cluster_medians[i] = hmean(data_masked, axis=None)
-			except IndexError:
+				self.cluster_medians[i] = np.mean(self.reject_outliers(data_masked))
+			except IndexError as inst:
 				# If there are no points associated with a cluster, it won't be able to be
 				# median-ed, print them out just to check
-				print data_masked
-				print data
+				print inst
+				exc_type, exc_value, exc_traceback = sys.exc_info()
+				print "*** print_tb:"
+				traceback.print_tb(exc_traceback, limit=1, file=sys.stdout)
 
 		self.cluster_artist_medians = np.array(self.cluster_artist_medians)
+		print self.cluster_artist_medians[np.argwhere(np.isnan(self.cluster_artist_medians))]
+		print np.argwhere(np.isnan(self.cluster_artist_medians))
+		print self.cluster_artist_medians.shape
 		np.savetxt('kmeansclusters_profiles.csv', kmeans.cluster_centers_, delimiter=',')
 		np.savetxt('kmeanslabels_profiles.csv', kmeans.labels_, delimiter=',')
-		with open('kmeans_profiles_clustermedians.txt', 'wb') as f:
-			w = csv.writer(f)
-			w.writerows(self.cluster_artist_medians)
 
 	def predict(self, testfile='test.csv', outfile='kmeans_results.csv'):
 		users = util.dict_from_csv("profiles_dict.csv")
@@ -100,7 +104,7 @@ class kMeans():
 		users = util.dict_from_csv("profiles_dict.csv")
 		artists = util.dict_from_csv("artists_dict.csv")
 
-		user_medians = [hmean(np.ma.masked_where(user==0, user)) for user in self.train]
+		user_medians = [np.mean(self.reject_outliers(np.ma.masked_where(user==0, user))) for user in self.train]
 
 		if self.testing:
 			testing = self.test
@@ -136,7 +140,15 @@ class kMeans():
 			print "Error: {}".format(error)
 			return error
 
+	def reject_outliers(self, data, m=2):
+	# 0 vals should be masked by the time you get here
+		mean = np.mean(data)
+		if np.ma.is_masked(mean):
+			# this means it was all zeroes, to avoid nan, make it an array of 1 0 to return for mean purposes
+			return [0]
+		return data[abs(data - mean) < m * np.std(data)]
+
 kmeans = kMeans()
-kmeans.train_by_profile(k=10, testing=False)
+kmeans.train_by_profile(k=10, testing=True)
 kmeans.predict_profile(outfile='kmeans_profiles_results_k10_97_hmean.csv')
 
