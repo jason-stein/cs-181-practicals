@@ -3,6 +3,7 @@ import time
 import numpy as np
 import requests
 import json
+from scipy import stats
 
 def dict_from_csv(direc):
     dic = {}
@@ -144,7 +145,53 @@ def create_country_dict():
 
 	print failed
 
+def validate(guess_file, train_file):
+	train_file = 'train.csv'
+	test_file  = 'test.csv'
+	soln_file  = 'user_median.csv'
+
+	# Load the training data.
+	train_data = {}
+	with open(train_file, 'r') as train_fh:
+	    train_csv = csv.reader(train_fh, delimiter=',', quotechar='"')
+	    next(train_csv, None)
+	    for row in train_csv:
+	        user   = row[0]
+	        artist = row[1]
+	        plays  = row[2]
+	    
+	        if not user in train_data:
+	            train_data[user] = {}
+	        
+	        train_data[user][artist] = int(plays)
+
+	# Compute the global median and per-user median.
+	plays_array  = []
+	user_medians = {}
+	for user, user_data in train_data.iteritems():
+	    user_plays = []
+	    for artist, plays in user_data.iteritems():
+	        plays_array.append(plays)
+	        user_plays.append(plays)
+
+	    # user_medians[user] = -0.00899649*np.median(np.array(user_plays)) + 0.86*np.mean(np.array(user_plays)) + 0.21672162*stats.hmean(np.array(user_plays))
+	    user_medians[user] = 1.02 * stats.hmean(np.array(user_plays))
+	with open(train_file, 'r') as f:
+		data = csv.reader(f, delimiter=',', quotechar='"')
+		next(data, None)
+		validation = []
+		for line in data:
+			if np.random.random() <= 1:
+				validation.append(line)
+		# print validation
+		n = len(validation)
+		Y = np.array([int(validation[i][2]) for i in xrange(len(validation))])
+		Yhat = np.array([int(user_medians[validation[i][0]]) for i in xrange(len(validation))])
+		print 1.0 / n * np.sum(abs(Yhat - Y))
+
+
 
 # util.create_dict_csv('artists')
 # util.create_dict_csv('profiles')
 #create_profile_matrix()
+# validate('user_median.csv', 'train.csv')

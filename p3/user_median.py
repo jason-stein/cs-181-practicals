@@ -1,5 +1,6 @@
 import numpy as np
 import csv
+from scipy import stats
 
 # Predict via the user-specific median.
 # If the user has no data, use the global median.
@@ -32,7 +33,7 @@ for user, user_data in train_data.iteritems():
         plays_array.append(plays)
         user_plays.append(plays)
 
-    user_medians[user] = np.median(np.array(user_plays))
+    user_medians[user] = stats.hmean(np.array(user_plays)) * 1.007
 global_median = np.median(np.array(plays_array))
 
 # Write out test solutions.
