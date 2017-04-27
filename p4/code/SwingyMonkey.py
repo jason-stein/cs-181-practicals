@@ -69,8 +69,7 @@ class SwingyMonkey:
             self.blop_snd       = pg.mixer.Sound('res/blop.wav')
 
         # Set up text rendering.
-        pg.font.init()
-        self.font = pg.font.SysFont('Comic Sans MS', 36)
+        self.font = pg.font.Font(None, 36)
 
         # Track locations of trees and gaps.
         self.trees     = []
