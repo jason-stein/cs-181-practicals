@@ -249,11 +249,129 @@ class Learner2(object):
         # else:
         self.last_reward = reward
 
+class Learner3(object):
+    
+    def __init__(self):
+        self.last_state  = None
+        self.last_action = None
+        self.last_reward = None
+        self.last_pruned_state = None
+        self.epsilon = 0.05
+        self.gamma = 0.8
+        self.eta = 0.2
+        self.q_vals = {}
+        self.action_space = [0, 1]
+        self.state_space = [-2, -1, 0, 1, 2]
+        self.vel_space = [-15, 0, 15]
+        self.delta_v_space = [1, 3]
+        for k in self.action_space:
+            for i in self.state_space:
+                for j in self.vel_space + [100]:
+                            for l in self.delta_v_space:
+                                self.q_vals[((i,j,l), k)] = 0
+        self.epoch = 0
+        self.gravity_est = None
+        self.last_y_vel = None
+        self.count = 0
+        self.f = open("tredist.txt", "w+")
+
+    def reset(self):
+        self.last_state  = None
+        self.last_action = None
+        self.last_reward = None
+        self.epoch += 1
+        self.gravity_est = None
+        self.last_y_vel = None
+
+    def action_callback(self, state):
+        '''
+        Implement this function to learn things and take actions.
+        Return 0 if you don't want to jump and 1 if you do.
+        '''
+
+        # You might do some learning here based on the current state and the last state.
+
+        # You'll need to select and action and return it.
+        # Return 0 to swing and 1 to jump.
+
+        # State processing
+        tree_top = state["tree"]["top"]
+        tree_bot = state["tree"]["bot"]
+        tree_mid = (tree_top + tree_bot) / 2
+        tree_botq = (tree_mid + tree_bot) / 2
+        tree_topq = (tree_top + tree_mid) / 2
+        tree_1_3 = (tree_top - tree_mid) / 3
+        tree_topt = tree_bot + 2 * tree_1_3
+        tree_bott = tree_bot + tree_1_3
+        m_top = state["monkey"]["top"]
+        m_bot = state['monkey']['bot']
+        m_mid = (m_top + m_bot) / 2 
+        m_vel= state['monkey']['vel']
+        tree_dist = state['tree']['dist']
+
+        # State logic
+        curr_state = (0,0,1)
+        if m_mid >= tree_botq and m_mid <= tree_topq:
+            curr_state = (0, curr_state[1], curr_state[2])
+        elif m_mid >= tree_topq:
+            curr_state = (2, curr_state[1], curr_state[2])
+        elif m_mid <= tree_botq:
+            curr_state = (-2, curr_state[1], curr_state[2])
+
+        for i in self.vel_space[::-1]:
+            if m_vel <= i:
+                curr_state = (curr_state[0], i, curr_state[2])
+                # curr_state = (curr_state[0], i)
+        if m_vel > self.vel_space[-1]:
+            curr_state = (curr_state[0], 100, curr_state[2])
+            # curr_state = (curr_state[0], 100)
+        # print m_vel
+        self.f.write("{}\n".format(tree_dist))
+
+        if self.last_state:
+            for i in self.delta_v_space:
+                if abs(self.last_state['monkey']['vel'] - m_vel) >= i:
+                    curr_state = (curr_state[0], curr_state[1], i)
+
+        if not self.last_y_vel:
+            self.last_y_vel = m_vel
+
+        # Q-learning
+        if self.last_reward:
+            future = self.eta * (self.last_reward + self.gamma * np.max([self.q_vals[(curr_state, k)] for k in self.action_space]))
+            self.q_vals[(self.last_pruned_state, self.last_action)] = (1-self.eta) * self.q_vals[(self.last_pruned_state, self.last_action)] + future
+
+        if np.random.rand() > self.epsilon:
+            self.last_action = self.action_space[np.argmax([self.q_vals[(curr_state, k)] for k in self.action_space])]
+        else:
+            self.last_action = np.random.choice(self.action_space)
+        new_state  = state
+        self.last_state = new_state
+        self.last_pruned_state = curr_state
+
+        if self.epoch < 30:
+            self.epsilon = self.epsilon * 0.99
+        else:
+            self.epsilon = 0
+
+        return self.last_action
+
+    def reward_callback(self, reward):
+        '''This gets called so you can see what reward you get.'''
+        # if reward == -10:
+        #     self.last_reward = -100
+        # elif reward == -5:
+        #     self.last_reward = -50
+        # else:
+        self.last_reward = reward
+
 
 def run_games(learner, hist, iters = 100, t_len = 100):
     '''
     Driver function to simulate learning by having the agent play a sequence of games.
     '''
+
+    stats = {1: {'max': 0, 'mean': 0, 'mean_10+': 0}, 4: {'max': 0, 'mean': 0, 'mean_10+': 0}}
     for ii in range(iters):
         # Make a new monkey object.
         swing = SwingyMonkey(sound=False,                  # Don't play sounds.
@@ -270,15 +388,26 @@ def run_games(learner, hist, iters = 100, t_len = 100):
         print "Epoch: " + str(ii) + " Score: " + str(swing.score) + " Gravity: " + str(swing.gravity)
         hist.append(swing.score)
 
+        stats[swing.gravity]['mean'] += swing.score
+        stats[swing.gravity]['max'] = max(stats[swing.gravity]['max'], swing.score)
+        if ii > 9:
+            stats[swing.gravity]['mean_10+'] += swing.score
+        
+
         # Reset the state of the learner.
         learner.reset()
+    stats[1]['mean'] /= float(iters)
+    stats[1]['mean_10+'] /= float(iters - 10)
+    stats[4]['mean'] /= float(iters)
+    stats[4]['mean_10+'] /= float(iters - 10)
+    print stats
     return
 
 
 if __name__ == '__main__':
 
 	# Select agent.
-	agent = Learner()
+	agent = Learner3()
 
 	# Empty list to save history.
 	hist = []
