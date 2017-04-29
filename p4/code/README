@@ -1,3 +1,12 @@
 (Fill this in with run instructions.)
 
+Do:
+
 `python stub.py`
+
+To run the learner.
+
+
+
+analysis.py is what we used to do some analysis of different possible features.
+dictreader.py is a convenience script for calculating the averages across trials.
